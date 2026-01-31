@@ -33,14 +33,14 @@ var (
 // Store defines the interface for tool documentation storage.
 //
 // Contract:
-// - Concurrency: implementations must be safe for concurrent use.
-// - Errors: return ErrNotFound when neither docs nor tool exist; ErrInvalidDetail for
-//   invalid detail levels; ErrNoTool when schema/full detail requires a Tool.
-//   Callers should use errors.Is.
-// - Ownership: returned ToolDoc and ToolExample slices are caller-owned and may be
-//   treated as read-only snapshots.
-// - Determinism: identical inputs over unchanged data must yield stable results.
-// - Nil/zero: empty IDs are treated as not found; maxExamples <= 0 returns zero examples.
+//   - Concurrency: implementations must be safe for concurrent use.
+//   - Errors: return ErrNotFound when neither docs nor tool exist; ErrInvalidDetail for
+//     invalid detail levels; ErrNoTool when schema/full detail requires a Tool.
+//     Callers should use errors.Is.
+//   - Ownership: returned ToolDoc and ToolExample slices are caller-owned and may be
+//     treated as read-only snapshots.
+//   - Determinism: identical inputs over unchanged data must yield stable results.
+//   - Nil/zero: empty IDs are treated as not found; maxExamples <= 0 returns zero examples.
 type Store interface {
 	// DescribeTool returns documentation for a tool at the specified detail level.
 	//

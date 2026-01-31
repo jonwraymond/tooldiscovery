@@ -92,9 +92,9 @@ func (s embeddingStrategy) Score(ctx context.Context, query string, doc Document
 }
 
 type hybridStrategy struct {
-	bm25     Strategy
+	bm25      Strategy
 	embedding Strategy
-	alpha    float64
+	alpha     float64
 }
 
 func (s hybridStrategy) Score(ctx context.Context, query string, doc Document) (float64, error) {

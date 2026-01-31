@@ -50,15 +50,15 @@ type SearchDoc struct {
 // Index defines the interface for a tool registry.
 //
 // Contract:
-// - Concurrency: implementations must be safe for concurrent use.
-// - Errors: validation failures should return ErrInvalidTool/ErrInvalidBackend;
-//   missing tools/backends should return ErrNotFound; cursor issues should return
-//   ErrInvalidCursor; pagination with non-deterministic searchers should return
-//   ErrNonDeterministicSearcher. Callers must use errors.Is.
-// - Ownership: returned slices are caller-owned; elements are read-only and may be shared.
-// - Determinism: Search/List methods must return stable ordering for identical inputs.
-// - Nil/zero: empty inputs are treated as no-ops; SearchPage requires limit > 0.
-// - Atomicity: batch registration is not guaranteed to be atomic on error.
+//   - Concurrency: implementations must be safe for concurrent use.
+//   - Errors: validation failures should return ErrInvalidTool/ErrInvalidBackend;
+//     missing tools/backends should return ErrNotFound; cursor issues should return
+//     ErrInvalidCursor; pagination with non-deterministic searchers should return
+//     ErrNonDeterministicSearcher. Callers must use errors.Is.
+//   - Ownership: returned slices are caller-owned; elements are read-only and may be shared.
+//   - Determinism: Search/List methods must return stable ordering for identical inputs.
+//   - Nil/zero: empty inputs are treated as no-ops; SearchPage requires limit > 0.
+//   - Atomicity: batch registration is not guaranteed to be atomic on error.
 type Index interface {
 	// Registration
 	RegisterTool(tool model.Tool, backend model.ToolBackend) error
