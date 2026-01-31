@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/blevesearch/bleve/v2 v2.5.7
-	github.com/jonwraymond/toolfoundation v0.0.0
+	github.com/jonwraymond/toolfoundation v0.1.0
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 )
 
@@ -38,5 +38,3 @@ require (
 	golang.org/x/sys v0.29.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 )
-
-replace github.com/jonwraymond/toolfoundation => ../toolfoundation
