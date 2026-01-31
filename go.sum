@@ -54,6 +54,8 @@ github.com/google/jsonschema-go v0.3.0 h1:6AH2TxVNtk3IlvkkhjrtbUc4S8AvO0Xii0DxIy
 github.com/google/jsonschema-go v0.3.0/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/jonwraymond/toolexec v0.0.0-20260131020103-c98adf392fa5 h1:F1DcQV1mZRYQG8DxyYoOd9FcwQwb1ZSd7YQxrrnNJ5E=
+github.com/jonwraymond/toolexec v0.0.0-20260131020103-c98adf392fa5/go.mod h1:XvtnftuKitruKUgRLYuYii86O1tt1oQOFMcByiD9K1Q=
 github.com/jonwraymond/toolfoundation v0.1.0 h1:PmVsdT9j6TP61TxI2D3Zf0MsFFQVAOqHcOrloTi1Cno=
 github.com/jonwraymond/toolfoundation v0.1.0/go.mod h1:naJm1NEZU8FbOw5rM8SJ3OhgHs0q8QHh8igrwP4wNfA=
 github.com/json-iterator/go v0.0.0-20171115153421-f7279a603ede h1:YrgBGwxMRK0Vq0WSCWFaZUnTsrA/PZE/xs1QZh+/edg=
