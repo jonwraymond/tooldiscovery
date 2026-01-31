@@ -63,6 +63,12 @@ defer searcher.Close()
 idx := index.NewInMemoryIndex(index.WithSearchStrategy(searcher))
 ```
 
+### Search Strategy Guidance
+
+- **Lexical** (default): simple substring matching; best for small registries.
+- **BM25** (`search`): higher quality ranking for larger registries.
+- **Semantic** (`semantic`): intent-based matching when embeddings are available.
+
 ### Progressive Documentation
 
 ```go
@@ -75,6 +81,16 @@ doc, _ := store.GetDoc(toolID, tooldoc.DetailSummary)
 
 // Get full schema (on-demand)
 doc, _ = store.GetDoc(toolID, tooldoc.DetailSchema)
+```
+
+### Semantic Search (Optional)
+
+```go
+import "github.com/jonwraymond/tooldiscovery/semantic"
+
+// Provide an Embedder + VectorStore implementation
+searcher := semantic.NewSemanticSearcher(embedder, vectorStore)
+idx := index.NewInMemoryIndex(index.WithSearchStrategy(searcher))
 ```
 
 ## Key Features

@@ -12,7 +12,10 @@ go get github.com/jonwraymond/tooldiscovery
 
 | Package | Description | Documentation |
 |---------|-------------|---------------|
-| TBD | TBD | [docs](./docs/) |
+| `index` | Registry, lookup, and search interface | [docs](./docs/) |
+| `search` | BM25 lexical search strategy | [docs](./docs/) |
+| `semantic` | Embedding-based search (optional) | [docs](./docs/) |
+| `tooldoc` | Progressive documentation store | [docs](./docs/) |
 
 ## License
 

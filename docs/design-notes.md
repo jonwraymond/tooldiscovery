@@ -37,8 +37,15 @@ It handles tool registration, search, and progressive documentation.
 2. **Field Boosting**: Configurable boosts for name (4x), namespace (2x), and
    tags (1x) fields.
 
-3. **Build Tag Gating**: BM25 support requires the `toolsearch` build tag to
-   keep the default binary minimal.
+3. **Optional Dependency**: BM25 support depends on Bleve and is only used when
+   the `search` package is imported. Consumers can omit BM25 entirely by
+   sticking with the default lexical strategy.
+
+### Search Strategy Policy
+
+- **Lexical (default)**: Lightweight substring matching; best for small indexes.
+- **BM25 (search package)**: Preferred for larger registries; tunable boosts.
+- **Semantic (semantic package)**: Best for fuzzy intent matching; requires embeddings.
 
 ### Configuration
 
@@ -62,6 +69,15 @@ It handles tool registration, search, and progressive documentation.
 3. **Optional Dependency**: Semantic search is opt-in and requires additional
    setup (embeddings, vector store).
 
+### Contract Expectations
+
+- **Embedder**: Must be deterministic for the same input and return fixed-size
+  vectors. Errors should be propagated rather than swallowed.
+- **VectorStore**: Must return results ordered by similarity and include IDs
+  that map back to registered tools.
+- **Hybrid**: The hybrid searcher uses Reciprocal Rank Fusion (RRF) to combine
+  BM25 and semantic results.
+
 ## tooldoc Package
 
 ### Design Decisions
@@ -77,6 +93,15 @@ It handles tool registration, search, and progressive documentation.
 
 3. **Index Integration**: DocStore can use an Index to derive documentation
    from registered tools.
+
+### Detail-Level Field Matrix
+
+| Level | Fields |
+|-------|--------|
+| Summary | ID, Name, Namespace, ShortDescription |
+| Description | Summary + Description, Tags |
+| Schema | Description + InputSchema, OutputSchema |
+| Full | Schema + Examples, Metadata |
 
 ## Dependencies
 

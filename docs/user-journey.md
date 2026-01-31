@@ -74,6 +74,13 @@ doc, _ = store.GetDoc("github:create_issue", tooldoc.DetailSchema)
 fmt.Printf("Input Schema: %v\n", doc.InputSchema)
 ```
 
+### Detail Level Guidance
+
+- **Summary**: listing/search results (token-cheap)
+- **Description**: selection UI or refinement
+- **Schema**: just-in-time execution
+- **Full**: documentation view or export
+
 ## 6. Enable BM25 Search (Optional)
 
 ```go
