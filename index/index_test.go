@@ -8,8 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // Helper to create a valid tool for testing
@@ -1748,5 +1749,914 @@ func TestListNamespacesPage_PaginatesWithCursor(t *testing.T) {
 	}
 	if nextNamespaces[0] != "ns3" {
 		t.Fatalf("expected ns3, got %q", nextNamespaces[0])
+	}
+}
+
+// ============================================================
+// Tests for OnChange listener and removeListener
+// ============================================================
+
+func TestOnChange_NilListener(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	// Nil listener should return a no-op unsubscribe function
+	unsub := idx.OnChange(nil)
+	if unsub == nil {
+		t.Fatal("expected non-nil unsubscribe function")
+	}
+	// Should not panic
+	unsub()
+}
+
+func TestOnChange_Unsubscribe(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	callCount := 0
+	unsub := idx.OnChange(func(e ChangeEvent) {
+		callCount++
+	})
+
+	// Register a tool - should trigger listener
+	tool := makeTestTool("mytool", "ns", "desc", nil)
+	mustRegister(t, idx, tool, makeLocalBackend("handler"))
+
+	if callCount != 1 {
+		t.Errorf("expected callCount=1, got %d", callCount)
+	}
+
+	// Unsubscribe
+	unsub()
+
+	// Register another tool - should NOT trigger unsubscribed listener
+	tool2 := makeTestTool("mytool2", "ns", "desc", nil)
+	mustRegister(t, idx, tool2, makeLocalBackend("handler2"))
+
+	if callCount != 1 {
+		t.Errorf("expected callCount=1 after unsubscribe, got %d", callCount)
+	}
+}
+
+func TestOnChange_MultipleListeners(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	count1, count2, count3 := 0, 0, 0
+	unsub1 := idx.OnChange(func(e ChangeEvent) { count1++ })
+	unsub2 := idx.OnChange(func(e ChangeEvent) { count2++ })
+	unsub3 := idx.OnChange(func(e ChangeEvent) { count3++ })
+
+	// Register a tool - all listeners should be notified
+	mustRegister(t, idx, makeTestTool("t1", "ns", "desc", nil), makeLocalBackend("h1"))
+
+	if count1 != 1 || count2 != 1 || count3 != 1 {
+		t.Errorf("expected all counts=1, got %d,%d,%d", count1, count2, count3)
+	}
+
+	// Unsubscribe middle listener
+	unsub2()
+
+	// Register another tool
+	mustRegister(t, idx, makeTestTool("t2", "ns", "desc", nil), makeLocalBackend("h2"))
+
+	if count1 != 2 || count2 != 1 || count3 != 2 {
+		t.Errorf("expected counts=2,1,2, got %d,%d,%d", count1, count2, count3)
+	}
+
+	// Unsubscribe first and last
+	unsub1()
+	unsub3()
+
+	// Register another tool - no listeners should be called
+	mustRegister(t, idx, makeTestTool("t3", "ns", "desc", nil), makeLocalBackend("h3"))
+
+	if count1 != 2 || count2 != 1 || count3 != 2 {
+		t.Errorf("expected counts unchanged, got %d,%d,%d", count1, count2, count3)
+	}
+}
+
+// ============================================================
+// Tests for boolPtrEqual
+// ============================================================
+
+func TestBoolPtrEqual(t *testing.T) {
+	trueVal := true
+	falseVal := false
+
+	tests := []struct {
+		name string
+		a, b *bool
+		want bool
+	}{
+		{"both nil", nil, nil, true},
+		{"a nil b true", nil, &trueVal, false},
+		{"a true b nil", &trueVal, nil, false},
+		{"both true", &trueVal, &trueVal, true},
+		{"both false", &falseVal, &falseVal, true},
+		{"true vs false", &trueVal, &falseVal, false},
+		{"false vs true", &falseVal, &trueVal, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := boolPtrEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("boolPtrEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for iconEqual
+// ============================================================
+
+func TestIconEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b mcp.Icon
+		want bool
+	}{
+		{
+			name: "both empty",
+			a:    mcp.Icon{},
+			b:    mcp.Icon{},
+			want: true,
+		},
+		{
+			name: "same source",
+			a:    mcp.Icon{Source: "https://example.com/icon.png"},
+			b:    mcp.Icon{Source: "https://example.com/icon.png"},
+			want: true,
+		},
+		{
+			name: "different source",
+			a:    mcp.Icon{Source: "https://example.com/icon1.png"},
+			b:    mcp.Icon{Source: "https://example.com/icon2.png"},
+			want: false,
+		},
+		{
+			name: "different mime type",
+			a:    mcp.Icon{Source: "icon.png", MIMEType: "image/png"},
+			b:    mcp.Icon{Source: "icon.png", MIMEType: "image/jpeg"},
+			want: false,
+		},
+		{
+			name: "different theme",
+			a:    mcp.Icon{Source: "icon.png", Theme: "light"},
+			b:    mcp.Icon{Source: "icon.png", Theme: "dark"},
+			want: false,
+		},
+		{
+			name: "same sizes",
+			a:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16", "32x32"}},
+			b:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16", "32x32"}},
+			want: true,
+		},
+		{
+			name: "different sizes length",
+			a:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16"}},
+			b:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16", "32x32"}},
+			want: false,
+		},
+		{
+			name: "different sizes values",
+			a:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16", "32x32"}},
+			b:    mcp.Icon{Source: "icon.png", Sizes: []string{"16x16", "64x64"}},
+			want: false,
+		},
+		{
+			name: "full equality",
+			a:    mcp.Icon{Source: "icon.svg", MIMEType: "image/svg+xml", Theme: "dark", Sizes: []string{"any"}},
+			b:    mcp.Icon{Source: "icon.svg", MIMEType: "image/svg+xml", Theme: "dark", Sizes: []string{"any"}},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := iconEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("iconEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for annotationsEqual
+// ============================================================
+
+func TestAnnotationsEqual(t *testing.T) {
+	trueVal := true
+	falseVal := false
+
+	tests := []struct {
+		name string
+		a, b *mcp.ToolAnnotations
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "a nil b non-nil",
+			a:    nil,
+			b:    &mcp.ToolAnnotations{},
+			want: false,
+		},
+		{
+			name: "a non-nil b nil",
+			a:    &mcp.ToolAnnotations{},
+			b:    nil,
+			want: false,
+		},
+		{
+			name: "both empty",
+			a:    &mcp.ToolAnnotations{},
+			b:    &mcp.ToolAnnotations{},
+			want: true,
+		},
+		{
+			name: "different title",
+			a:    &mcp.ToolAnnotations{Title: "Title A"},
+			b:    &mcp.ToolAnnotations{Title: "Title B"},
+			want: false,
+		},
+		{
+			name: "different read only hint",
+			a:    &mcp.ToolAnnotations{ReadOnlyHint: true},
+			b:    &mcp.ToolAnnotations{ReadOnlyHint: false},
+			want: false,
+		},
+		{
+			name: "different idempotent hint",
+			a:    &mcp.ToolAnnotations{IdempotentHint: true},
+			b:    &mcp.ToolAnnotations{IdempotentHint: false},
+			want: false,
+		},
+		{
+			name: "different destructive hint",
+			a:    &mcp.ToolAnnotations{DestructiveHint: &trueVal},
+			b:    &mcp.ToolAnnotations{DestructiveHint: &falseVal},
+			want: false,
+		},
+		{
+			name: "different open world hint",
+			a:    &mcp.ToolAnnotations{OpenWorldHint: &trueVal},
+			b:    &mcp.ToolAnnotations{OpenWorldHint: nil},
+			want: false,
+		},
+		{
+			name: "full equality",
+			a: &mcp.ToolAnnotations{
+				Title:           "Test Tool",
+				ReadOnlyHint:    true,
+				IdempotentHint:  true,
+				DestructiveHint: &falseVal,
+				OpenWorldHint:   &trueVal,
+			},
+			b: &mcp.ToolAnnotations{
+				Title:           "Test Tool",
+				ReadOnlyHint:    true,
+				IdempotentHint:  true,
+				DestructiveHint: &falseVal,
+				OpenWorldHint:   &trueVal,
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := annotationsEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("annotationsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for metaEqual
+// ============================================================
+
+func TestMetaEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b mcp.Meta
+		want bool
+	}{
+		{
+			name: "both nil",
+			a:    nil,
+			b:    nil,
+			want: true,
+		},
+		{
+			name: "both empty",
+			a:    mcp.Meta{},
+			b:    mcp.Meta{},
+			want: true,
+		},
+		{
+			name: "different length",
+			a:    mcp.Meta{"key1": "val1"},
+			b:    mcp.Meta{"key1": "val1", "key2": "val2"},
+			want: false,
+		},
+		{
+			name: "different keys",
+			a:    mcp.Meta{"key1": "val1"},
+			b:    mcp.Meta{"key2": "val1"},
+			want: false,
+		},
+		{
+			name: "different values",
+			a:    mcp.Meta{"key1": "val1"},
+			b:    mcp.Meta{"key1": "val2"},
+			want: false,
+		},
+		{
+			name: "same string values",
+			a:    mcp.Meta{"key1": "val1", "key2": "val2"},
+			b:    mcp.Meta{"key1": "val1", "key2": "val2"},
+			want: true,
+		},
+		{
+			name: "nested map equal",
+			a:    mcp.Meta{"nested": map[string]any{"a": "b"}},
+			b:    mcp.Meta{"nested": map[string]any{"a": "b"}},
+			want: true,
+		},
+		{
+			name: "nested map different",
+			a:    mcp.Meta{"nested": map[string]any{"a": "b"}},
+			b:    mcp.Meta{"nested": map[string]any{"a": "c"}},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := metaEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("metaEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for jsonEqual edge cases
+// ============================================================
+
+func TestJsonEqual(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b any
+		want bool
+	}{
+		{"both nil", nil, nil, true},
+		{"a nil", nil, "value", false},
+		{"b nil", "value", nil, false},
+		{"same string", "hello", "hello", true},
+		{"different string", "hello", "world", false},
+		{"same float64", 3.14, 3.14, true},
+		{"different float64", 3.14, 2.71, false},
+		{"same bool", true, true, true},
+		{"different bool", true, false, false},
+		{"same int", 42, 42, true},
+		{"int vs float64", 42, 42.0, true},
+		{"different int", 42, 43, false},
+		{"same slice", []any{"a", "b"}, []any{"a", "b"}, true},
+		{"different slice length", []any{"a"}, []any{"a", "b"}, false},
+		{"different slice values", []any{"a", "b"}, []any{"a", "c"}, false},
+		{"same map", map[string]any{"k": "v"}, map[string]any{"k": "v"}, true},
+		{"different map length", map[string]any{"k": "v"}, map[string]any{"k": "v", "k2": "v2"}, false},
+		{"different map values", map[string]any{"k": "v1"}, map[string]any{"k": "v2"}, false},
+		{"string vs int", "42", 42, false},
+		{"bool vs string", true, "true", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := jsonEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("jsonEqual(%v, %v) = %v, want %v", tt.a, tt.b, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestJsonEqual_RawMessage(t *testing.T) {
+	// Test json.RawMessage comparisons
+	raw1 := json.RawMessage(`{"key":"value"}`)
+	raw2 := json.RawMessage(`{"key":"value"}`)
+	raw3 := json.RawMessage(`{"key":"different"}`)
+	mapVal := map[string]any{"key": "value"}
+
+	tests := []struct {
+		name string
+		a, b any
+		want bool
+	}{
+		{"raw vs raw equal", raw1, raw2, true},
+		{"raw vs raw different", raw1, raw3, false},
+		{"raw vs map equal", raw1, mapVal, true},
+		{"map vs raw equal", mapVal, raw1, true},
+		{"bytes vs raw equal", []byte(`{"key":"value"}`), raw1, true},
+		{"invalid json raw", json.RawMessage(`{invalid`), mapVal, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := jsonEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("jsonEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestJsonEqualBytes(t *testing.T) {
+	tests := []struct {
+		name   string
+		aBytes []byte
+		b      any
+		want   bool
+	}{
+		{
+			name:   "bytes vs RawMessage equal",
+			aBytes: []byte(`{"key":"value"}`),
+			b:      json.RawMessage(`{"key":"value"}`),
+			want:   true,
+		},
+		{
+			name:   "bytes vs bytes equal",
+			aBytes: []byte(`{"key":"value"}`),
+			b:      []byte(`{"key":"value"}`),
+			want:   true,
+		},
+		{
+			name:   "bytes vs map equal",
+			aBytes: []byte(`{"key":"value"}`),
+			b:      map[string]any{"key": "value"},
+			want:   true,
+		},
+		{
+			name:   "bytes vs map different",
+			aBytes: []byte(`{"key":"value"}`),
+			b:      map[string]any{"key": "other"},
+			want:   false,
+		},
+		{
+			name:   "invalid json bytes",
+			aBytes: []byte(`{invalid`),
+			b:      map[string]any{"key": "value"},
+			want:   false,
+		},
+		{
+			name:   "invalid json in b bytes",
+			aBytes: []byte(`{"key":"value"}`),
+			b:      []byte(`{invalid`),
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := jsonEqualBytes(tt.aBytes, tt.b); got != tt.want {
+				t.Errorf("jsonEqualBytes() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for iconsEqual
+// ============================================================
+
+func TestIconsEqual(t *testing.T) {
+	icon1 := mcp.Icon{Source: "icon1.png"}
+	icon2 := mcp.Icon{Source: "icon2.png"}
+
+	tests := []struct {
+		name string
+		a, b []mcp.Icon
+		want bool
+	}{
+		{"both nil", nil, nil, true},
+		{"both empty", []mcp.Icon{}, []mcp.Icon{}, true},
+		{"different length", []mcp.Icon{icon1}, []mcp.Icon{icon1, icon2}, false},
+		{"same icons", []mcp.Icon{icon1, icon2}, []mcp.Icon{icon1, icon2}, true},
+		{"different icons", []mcp.Icon{icon1}, []mcp.Icon{icon2}, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := iconsEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("iconsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for DefaultBackendSelector edge cases
+// ============================================================
+
+func TestDefaultBackendSelector_AllKinds(t *testing.T) {
+	mcpBackend := makeMCPBackend("server1")
+	providerBackend := makeProviderBackend("provider1", "tool1")
+	localBackend := makeLocalBackend("local1")
+
+	tests := []struct {
+		name     string
+		backends []model.ToolBackend
+		wantKind model.BackendKind
+	}{
+		{
+			name:     "empty returns empty",
+			backends: []model.ToolBackend{},
+			wantKind: "",
+		},
+		{
+			name:     "local preferred over provider and mcp",
+			backends: []model.ToolBackend{mcpBackend, providerBackend, localBackend},
+			wantKind: model.BackendKindLocal,
+		},
+		{
+			name:     "provider preferred over mcp",
+			backends: []model.ToolBackend{mcpBackend, providerBackend},
+			wantKind: model.BackendKindProvider,
+		},
+		{
+			name:     "mcp when no others",
+			backends: []model.ToolBackend{mcpBackend},
+			wantKind: model.BackendKindMCP,
+		},
+		{
+			name:     "first backend as fallback for unknown kind",
+			backends: []model.ToolBackend{{Kind: "unknown"}},
+			wantKind: "unknown",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := DefaultBackendSelector(tt.backends)
+			if got.Kind != tt.wantKind {
+				t.Errorf("DefaultBackendSelector() kind = %v, want %v", got.Kind, tt.wantKind)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for backendIdentity edge cases
+// ============================================================
+
+func TestBackendIdentity_NilDetails(t *testing.T) {
+	// Backend with kind but nil details should return empty identity
+	tests := []struct {
+		name    string
+		backend model.ToolBackend
+		want    string
+	}{
+		{
+			name:    "MCP with nil MCP details",
+			backend: model.ToolBackend{Kind: model.BackendKindMCP, MCP: nil},
+			want:    "",
+		},
+		{
+			name:    "Provider with nil Provider details",
+			backend: model.ToolBackend{Kind: model.BackendKindProvider, Provider: nil},
+			want:    "",
+		},
+		{
+			name:    "Local with nil Local details",
+			backend: model.ToolBackend{Kind: model.BackendKindLocal, Local: nil},
+			want:    "",
+		},
+		{
+			name:    "Unknown kind",
+			backend: model.ToolBackend{Kind: "unknown"},
+			want:    "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := backendIdentity(tt.backend); got != tt.want {
+				t.Errorf("backendIdentity() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for validateBackend edge cases
+// ============================================================
+
+func TestValidateBackend_AllErrors(t *testing.T) {
+	tests := []struct {
+		name    string
+		backend model.ToolBackend
+		wantErr bool
+	}{
+		{
+			name:    "MCP nil details",
+			backend: model.ToolBackend{Kind: model.BackendKindMCP, MCP: nil},
+			wantErr: true,
+		},
+		{
+			name:    "MCP empty server name",
+			backend: model.ToolBackend{Kind: model.BackendKindMCP, MCP: &model.MCPBackend{ServerName: ""}},
+			wantErr: true,
+		},
+		{
+			name:    "Provider nil details",
+			backend: model.ToolBackend{Kind: model.BackendKindProvider, Provider: nil},
+			wantErr: true,
+		},
+		{
+			name:    "Provider empty ProviderID",
+			backend: model.ToolBackend{Kind: model.BackendKindProvider, Provider: &model.ProviderBackend{ProviderID: "", ToolID: "t"}},
+			wantErr: true,
+		},
+		{
+			name:    "Provider empty ToolID",
+			backend: model.ToolBackend{Kind: model.BackendKindProvider, Provider: &model.ProviderBackend{ProviderID: "p", ToolID: ""}},
+			wantErr: true,
+		},
+		{
+			name:    "Local nil details",
+			backend: model.ToolBackend{Kind: model.BackendKindLocal, Local: nil},
+			wantErr: true,
+		},
+		{
+			name:    "Local empty name",
+			backend: model.ToolBackend{Kind: model.BackendKindLocal, Local: &model.LocalBackend{Name: ""}},
+			wantErr: true,
+		},
+		{
+			name:    "Unknown kind",
+			backend: model.ToolBackend{Kind: "unknown"},
+			wantErr: true,
+		},
+		{
+			name:    "Valid MCP",
+			backend: makeMCPBackend("server"),
+			wantErr: false,
+		},
+		{
+			name:    "Valid Provider",
+			backend: makeProviderBackend("p", "t"),
+			wantErr: false,
+		},
+		{
+			name:    "Valid Local",
+			backend: makeLocalBackend("name"),
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateBackend(tt.backend)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateBackend() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for concurrent access
+// ============================================================
+
+// ============================================================
+// Tests for toolMCPFieldsEqual edge cases
+// ============================================================
+
+func TestToolMCPFieldsEqual_AllFields(t *testing.T) {
+	baseSchema := map[string]any{"type": "object"}
+
+	tests := []struct {
+		name string
+		a, b model.Tool
+		want bool
+	}{
+		{
+			name: "identical tools",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", Description: "d", InputSchema: baseSchema}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", Description: "d", InputSchema: baseSchema}},
+			want: true,
+		},
+		{
+			name: "different names",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t1", Description: "d", InputSchema: baseSchema}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t2", Description: "d", InputSchema: baseSchema}},
+			want: false,
+		},
+		{
+			name: "different descriptions",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", Description: "d1", InputSchema: baseSchema}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", Description: "d2", InputSchema: baseSchema}},
+			want: false,
+		},
+		{
+			name: "different titles",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", Title: "Title1", InputSchema: baseSchema}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", Title: "Title2", InputSchema: baseSchema}},
+			want: false,
+		},
+		{
+			name: "with output schema equal",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, OutputSchema: map[string]any{"type": "string"}}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, OutputSchema: map[string]any{"type": "string"}}},
+			want: true,
+		},
+		{
+			name: "with output schema different",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, OutputSchema: map[string]any{"type": "string"}}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, OutputSchema: map[string]any{"type": "number"}}},
+			want: false,
+		},
+		{
+			name: "with meta equal",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, Meta: mcp.Meta{"k": "v"}}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, Meta: mcp.Meta{"k": "v"}}},
+			want: true,
+		},
+		{
+			name: "with meta different",
+			a:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, Meta: mcp.Meta{"k": "v1"}}},
+			b:    model.Tool{Tool: mcp.Tool{Name: "t", InputSchema: baseSchema, Meta: mcp.Meta{"k": "v2"}}},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := toolMCPFieldsEqual(tt.a, tt.b); got != tt.want {
+				t.Errorf("toolMCPFieldsEqual() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+// ============================================================
+// Tests for concurrent access
+// ============================================================
+
+func TestInMemoryIndex_ConcurrentAccess(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	const goroutines = 10
+	const iterations = 50
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 4)
+
+	// Concurrent registration
+	for i := 0; i < goroutines; i++ {
+		go func(id int) {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				name := fmt.Sprintf("tool-%d-%d", id, j)
+				tool := makeTestTool(name, "ns", "desc", nil)
+				_ = idx.RegisterTool(tool, makeLocalBackend(name))
+			}
+		}(i)
+	}
+
+	// Concurrent search
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				_, _ = idx.Search("tool", 10)
+			}
+		}()
+	}
+
+	// Concurrent list namespaces
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				_, _ = idx.ListNamespaces()
+			}
+		}()
+	}
+
+	// Concurrent OnChange
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				unsub := idx.OnChange(func(e ChangeEvent) {})
+				unsub()
+			}
+		}()
+	}
+
+	wg.Wait()
+}
+
+func TestSearchPage_InvalidJSONInCursor(t *testing.T) {
+	idx := NewInMemoryIndex()
+	mustRegister(t, idx, makeTestTool("alpha", "ns1", "alpha tool", nil), makeLocalBackend("alpha"))
+
+	// Valid base64 but invalid JSON
+	invalidJSONB64 := "dGhpcyBpcyBub3QganNvbg==" // "this is not json" in base64
+	_, _, err := idx.SearchPage("", 1, invalidJSONB64)
+	if !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("expected ErrInvalidCursor for invalid JSON, got %v", err)
+	}
+}
+
+func TestSearchPage_CursorPagination(t *testing.T) {
+	idx := NewInMemoryIndex()
+	mustRegister(t, idx, makeTestTool("alpha", "ns1", "alpha tool", nil), makeLocalBackend("alpha"))
+	mustRegister(t, idx, makeTestTool("beta", "ns1", "beta tool", nil), makeLocalBackend("beta"))
+	mustRegister(t, idx, makeTestTool("gamma", "ns1", "gamma tool", nil), makeLocalBackend("gamma"))
+
+	// Get first page
+	results1, cursor1, err := idx.SearchPage("", 2, "")
+	if err != nil {
+		t.Fatalf("SearchPage failed: %v", err)
+	}
+	if len(results1) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results1))
+	}
+	if cursor1 == "" {
+		t.Fatal("expected cursor for next page")
+	}
+
+	// Get second page using cursor
+	results2, cursor2, err := idx.SearchPage("", 2, cursor1)
+	if err != nil {
+		t.Fatalf("SearchPage with cursor failed: %v", err)
+	}
+	if len(results2) != 1 {
+		t.Fatalf("expected 1 result on second page, got %d", len(results2))
+	}
+	if cursor2 != "" {
+		t.Fatalf("expected empty cursor at end, got %q", cursor2)
+	}
+}
+
+func TestListNamespacesPage_InvalidCursor(t *testing.T) {
+	idx := NewInMemoryIndex()
+	mustRegister(t, idx, makeTestTool("alpha", "ns1", "alpha tool", nil), makeLocalBackend("alpha"))
+
+	_, _, err := idx.ListNamespacesPage(1, "not-valid-base64!!!")
+	if !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("expected ErrInvalidCursor, got %v", err)
+	}
+}
+
+func TestListNamespacesPage_StaleCursor(t *testing.T) {
+	idx := NewInMemoryIndex()
+	mustRegister(t, idx, makeTestTool("alpha", "ns1", "alpha tool", nil), makeLocalBackend("alpha"))
+	mustRegister(t, idx, makeTestTool("beta", "ns2", "beta tool", nil), makeLocalBackend("beta"))
+
+	_, cursor, err := idx.ListNamespacesPage(1, "")
+	if err != nil {
+		t.Fatalf("ListNamespacesPage failed: %v", err)
+	}
+
+	// Add a new namespace, invalidating the cursor
+	mustRegister(t, idx, makeTestTool("gamma", "ns3", "gamma tool", nil), makeLocalBackend("gamma"))
+
+	_, _, err = idx.ListNamespacesPage(1, cursor)
+	if !errors.Is(err, ErrInvalidCursor) {
+		t.Fatalf("expected ErrInvalidCursor for stale cursor, got %v", err)
+	}
+}
+
+func TestRegisterTools_EmptyBatch(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	err := idx.RegisterTools(nil)
+	if err != nil {
+		t.Fatalf("RegisterTools with nil should succeed, got: %v", err)
+	}
+
+	err = idx.RegisterTools([]ToolRegistration{})
+	if err != nil {
+		t.Fatalf("RegisterTools with empty slice should succeed, got: %v", err)
+	}
+}
+
+func TestRegisterToolsFromMCP_EmptyBatch(t *testing.T) {
+	idx := NewInMemoryIndex()
+
+	err := idx.RegisterToolsFromMCP("server", nil)
+	if err != nil {
+		t.Fatalf("RegisterToolsFromMCP with nil should succeed, got: %v", err)
+	}
+
+	err = idx.RegisterToolsFromMCP("server", []model.Tool{})
+	if err != nil {
+		t.Fatalf("RegisterToolsFromMCP with empty slice should succeed, got: %v", err)
 	}
 }

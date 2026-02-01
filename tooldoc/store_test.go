@@ -1244,3 +1244,396 @@ func TestRegisterExamples_ArgsCapsEnforced(t *testing.T) {
 		t.Errorf("unexpected error for valid args: %v", err)
 	}
 }
+
+// ============================================================
+// Tests for deepCopyValue with all type branches
+// ============================================================
+
+func TestDeepCopyValue_Nil(t *testing.T) {
+	result := deepCopyValue(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestDeepCopyValue_UntypedContainers(t *testing.T) {
+	// map[string]any
+	mapVal := map[string]any{"key": "value", "nested": map[string]any{"inner": 42}}
+	mapCopy := deepCopyValue(mapVal)
+	if mapCopyMap, ok := mapCopy.(map[string]any); !ok {
+		t.Errorf("expected map[string]any, got %T", mapCopy)
+	} else {
+		if mapCopyMap["key"] != "value" {
+			t.Errorf("key not copied correctly")
+		}
+	}
+
+	// []any
+	sliceVal := []any{"a", "b", map[string]any{"c": "d"}}
+	sliceCopy := deepCopyValue(sliceVal)
+	if sliceCopySlice, ok := sliceCopy.([]any); !ok {
+		t.Errorf("expected []any, got %T", sliceCopy)
+	} else {
+		if len(sliceCopySlice) != 3 {
+			t.Errorf("slice length incorrect")
+		}
+	}
+}
+
+func TestDeepCopyValue_TypedMaps(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{"map[string]string", map[string]string{"key": "value"}},
+		{"map[string]int", map[string]int{"count": 42}},
+		{"map[string]float64", map[string]float64{"pi": 3.14}},
+		{"map[string]bool", map[string]bool{"flag": true}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			// All typed maps should be normalized to map[string]any
+			if _, ok := result.(map[string]any); !ok {
+				t.Errorf("expected map[string]any, got %T", result)
+			}
+		})
+	}
+}
+
+func TestDeepCopyValue_TypedSlices(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		len   int
+	}{
+		{"[]string", []string{"a", "b", "c"}, 3},
+		{"[]int", []int{1, 2, 3}, 3},
+		{"[]float64", []float64{1.1, 2.2}, 2},
+		{"[]bool", []bool{true, false}, 2},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			// All typed slices should be normalized to []any
+			resultSlice, ok := result.([]any)
+			if !ok {
+				t.Errorf("expected []any, got %T", result)
+				return
+			}
+			if len(resultSlice) != tt.len {
+				t.Errorf("len = %d, want %d", len(resultSlice), tt.len)
+			}
+		})
+	}
+}
+
+func TestDeepCopyValue_Primitives(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+	}{
+		{"string", "hello"},
+		{"bool", true},
+		{"float64", 3.14},
+		{"float32", float32(2.71)},
+		{"int", 42},
+		{"int8", int8(8)},
+		{"int16", int16(16)},
+		{"int32", int32(32)},
+		{"int64", int64(64)},
+		{"uint", uint(1)},
+		{"uint8", uint8(8)},
+		{"uint16", uint16(16)},
+		{"uint32", uint32(32)},
+		{"uint64", uint64(64)},
+		{"json.Number", json.Number("123.45")},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := deepCopyValue(tt.input)
+			if result != tt.input {
+				t.Errorf("primitive not returned directly: got %v, want %v", result, tt.input)
+			}
+		})
+	}
+}
+
+func TestDeepCopyValue_UnknownType(t *testing.T) {
+	// Custom struct should be shallow copied
+	type customStruct struct {
+		Field string
+	}
+	input := customStruct{Field: "value"}
+	result := deepCopyValue(input)
+
+	if result != input {
+		t.Errorf("unknown type should be shallow copied")
+	}
+}
+
+// ============================================================
+// Tests for normalizeNumeric with all numeric types
+// ============================================================
+
+func TestNormalizeNumeric_AllTypes(t *testing.T) {
+	tests := []struct {
+		name  string
+		input any
+		want  float64
+	}{
+		{"int", int(42), 42.0},
+		{"int8", int8(8), 8.0},
+		{"int16", int16(16), 16.0},
+		{"int32", int32(32), 32.0},
+		{"int64", int64(64), 64.0},
+		{"uint", uint(1), 1.0},
+		{"uint8", uint8(8), 8.0},
+		{"uint16", uint16(16), 16.0},
+		{"uint32", uint32(32), 32.0},
+		{"uint64", uint64(64), 64.0},
+		{"float32", float32(3.14), float64(float32(3.14))},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeNumeric(tt.input)
+			resultFloat, ok := result.(float64)
+			if !ok {
+				t.Errorf("expected float64, got %T", result)
+				return
+			}
+			if resultFloat != tt.want {
+				t.Errorf("got %v, want %v", resultFloat, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeNumeric_NonNumeric(t *testing.T) {
+	// Test simple comparable types
+	t.Run("string", func(t *testing.T) {
+		result := normalizeNumeric("hello")
+		if result != "hello" {
+			t.Errorf("string should be returned as-is")
+		}
+	})
+
+	t.Run("bool", func(t *testing.T) {
+		result := normalizeNumeric(true)
+		if result != true {
+			t.Errorf("bool should be returned as-is")
+		}
+	})
+
+	t.Run("float64", func(t *testing.T) {
+		result := normalizeNumeric(3.14)
+		if result != 3.14 {
+			t.Errorf("float64 should be returned as-is")
+		}
+	})
+
+	// Test non-comparable types - just verify they don't panic and return something
+	t.Run("slice", func(t *testing.T) {
+		input := []int{1, 2, 3}
+		result := normalizeNumeric(input)
+		// Can't compare slices directly, just check it's not nil
+		if result == nil {
+			t.Errorf("slice should be returned")
+		}
+	})
+
+	t.Run("map", func(t *testing.T) {
+		input := map[string]any{"k": "v"}
+		result := normalizeNumeric(input)
+		// Can't compare maps directly, just check it's not nil
+		if result == nil {
+			t.Errorf("map should be returned")
+		}
+	})
+}
+
+// ============================================================
+// Tests for toStringSlice edge cases
+// ============================================================
+
+func TestToStringSlice_Nil(t *testing.T) {
+	result := toStringSlice(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestToStringSlice_StringSlice(t *testing.T) {
+	input := []string{"a", "b", "c"}
+	result := toStringSlice(input)
+
+	if len(result) != 3 {
+		t.Errorf("len = %d, want 3", len(result))
+	}
+
+	// Verify it's a copy, not the original
+	result[0] = "modified"
+	if input[0] == "modified" {
+		t.Error("toStringSlice should return a copy")
+	}
+}
+
+func TestToStringSlice_AnySlice(t *testing.T) {
+	input := []any{"a", "b", 123, "c"} // Mixed types
+	result := toStringSlice(input)
+
+	// Should only include strings
+	if len(result) != 3 {
+		t.Errorf("len = %d, want 3 (strings only)", len(result))
+	}
+}
+
+func TestToStringSlice_UnsupportedType(t *testing.T) {
+	input := []int{1, 2, 3}
+	result := toStringSlice(input)
+
+	if result != nil {
+		t.Errorf("expected nil for unsupported type, got %v", result)
+	}
+}
+
+// ============================================================
+// Tests for copyExamples edge cases
+// ============================================================
+
+func TestCopyExamples_Nil(t *testing.T) {
+	result := copyExamples(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestCopyExamples_DeepCopy(t *testing.T) {
+	original := []ToolExample{
+		{
+			ID:          "ex1",
+			Title:       "Example 1",
+			Description: "First example",
+			Args:        map[string]any{"key": "value", "nested": map[string]any{"inner": "data"}},
+			ResultHint:  "Success",
+		},
+	}
+
+	copied := copyExamples(original)
+
+	// Modify copied args
+	copiedArgs := copied[0].Args
+	copiedArgs["key"] = "modified"
+
+	// Original should be unchanged
+	if original[0].Args["key"] != "value" {
+		t.Error("copyExamples should create a deep copy")
+	}
+}
+
+// ============================================================
+// Tests for deepCopySlice edge cases
+// ============================================================
+
+func TestDeepCopySlice_Nil(t *testing.T) {
+	result := deepCopySlice(nil)
+	if result != nil {
+		t.Errorf("expected nil, got %v", result)
+	}
+}
+
+func TestDeepCopySlice_NestedValues(t *testing.T) {
+	original := []any{
+		"string",
+		42,
+		map[string]any{"key": "value"},
+		[]any{"nested", "slice"},
+	}
+
+	copied := deepCopySlice(original)
+
+	// Modify nested map in copy
+	nestedMap := copied[2].(map[string]any)
+	nestedMap["key"] = "modified"
+
+	// Original should be unchanged
+	originalMap := original[2].(map[string]any)
+	if originalMap["key"] != "value" {
+		t.Error("deepCopySlice should create a deep copy of nested values")
+	}
+}
+
+// ============================================================
+// Tests for deriveSchemaInfo edge cases
+// ============================================================
+
+func TestDeriveSchemaInfo_Nil(t *testing.T) {
+	result := deriveSchemaInfo(nil)
+	if result != nil {
+		t.Errorf("expected nil for nil schema, got %v", result)
+	}
+}
+
+func TestDeriveSchemaInfo_JSONRawMessage(t *testing.T) {
+	schemaJSON := json.RawMessage(`{
+		"type": "object",
+		"properties": {
+			"name": {"type": "string", "description": "The name"},
+			"age": {"type": "integer", "default": 0}
+		},
+		"required": ["name"]
+	}`)
+
+	result := deriveSchemaInfo(schemaJSON)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	// Check required field
+	if len(result.Required) != 1 || result.Required[0] != "name" {
+		t.Errorf("expected Required=[name], got %v", result.Required)
+	}
+
+	// Check types
+	if len(result.Types) != 2 {
+		t.Errorf("expected 2 types, got %d", len(result.Types))
+	}
+
+	// Check defaults
+	if result.Defaults["age"] == nil {
+		t.Error("expected default for age")
+	}
+}
+
+func TestDeriveSchemaInfo_ByteSlice(t *testing.T) {
+	schemaBytes := []byte(`{"type": "object", "properties": {"x": {"type": "number"}}}`)
+
+	result := deriveSchemaInfo(schemaBytes)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+
+	if len(result.Types) != 1 {
+		t.Errorf("expected 1 type, got %d", len(result.Types))
+	}
+}
+
+func TestDeriveSchemaInfo_InvalidJSON(t *testing.T) {
+	invalidJSON := json.RawMessage(`{invalid json}`)
+	result := deriveSchemaInfo(invalidJSON)
+	if result != nil {
+		t.Errorf("expected nil for invalid JSON, got %v", result)
+	}
+}
+
+func TestDeriveSchemaInfo_InvalidByteSlice(t *testing.T) {
+	invalidBytes := []byte(`{not valid}`)
+	result := deriveSchemaInfo(invalidBytes)
+	if result != nil {
+		t.Errorf("expected nil for invalid bytes, got %v", result)
+	}
+}

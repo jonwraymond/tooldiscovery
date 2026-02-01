@@ -82,9 +82,8 @@ It handles tool registration, search, and progressive documentation.
 
 ### Design Decisions
 
-1. **Detail Levels**: Four progressive levels:
+1. **Detail Levels**: Three progressive levels:
    - `Summary`: Name, namespace, short description
-   - `Description`: Full description, tags
    - `Schema`: Input/output JSON schemas
    - `Full`: Everything including examples
 
@@ -99,8 +98,7 @@ It handles tool registration, search, and progressive documentation.
 | Level | Fields |
 |-------|--------|
 | Summary | ID, Name, Namespace, ShortDescription |
-| Description | Summary + Description, Tags |
-| Schema | Description + InputSchema, OutputSchema |
+| Schema | Summary + InputSchema, OutputSchema |
 | Full | Schema + Examples, Metadata |
 
 ## Dependencies

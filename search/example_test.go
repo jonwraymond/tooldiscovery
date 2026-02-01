@@ -5,10 +5,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/jonwraymond/tooldiscovery/index"
 	"github.com/jonwraymond/tooldiscovery/search"
 	"github.com/jonwraymond/toolfoundation/model"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // TestExample_Basic verifies the basic example works correctly.

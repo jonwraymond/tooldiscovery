@@ -25,11 +25,16 @@ Thumbs.db
 # Coverage
 coverage.out
 coverage.html
+*_cov.out
+*_cov.html
+*.cov
 
 # Build
 dist/
 bin/
+hybrid
 
 .claude/
 
 CLAUDE.md
+**/CLAUDE.md

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/blevesearch/bleve/v2"
+
 	"github.com/jonwraymond/tooldiscovery/index"
 )
 

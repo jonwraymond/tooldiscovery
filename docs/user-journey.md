@@ -68,16 +68,15 @@ store := tooldoc.NewInMemoryStore(tooldoc.StoreOptions{Index: idx})
 
 // Progressive detail levels
 doc, _ := store.GetDoc("github:create_issue", tooldoc.DetailSummary)
-fmt.Println(doc.ShortDescription)
+fmt.Println(doc.Summary)
 
 doc, _ = store.GetDoc("github:create_issue", tooldoc.DetailSchema)
-fmt.Printf("Input Schema: %v\n", doc.InputSchema)
+fmt.Printf("Input Schema: %v\n", doc.Tool.InputSchema)
 ```
 
 ### Detail Level Guidance
 
 - **Summary**: listing/search results (token-cheap)
-- **Description**: selection UI or refinement
 - **Schema**: just-in-time execution
 - **Full**: documentation view or export
 

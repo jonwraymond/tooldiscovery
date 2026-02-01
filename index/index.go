@@ -12,8 +12,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // MaxShortDescriptionLen is the maximum length of the ShortDescription field in Summary.

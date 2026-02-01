@@ -7,6 +7,7 @@ documentation for the ApertureStack tool framework.
 
 | Package | Purpose |
 |---------|---------|
+| `discovery` | Unified facade combining index, search, semantic, and tooldoc |
 | `index` | Global registry, tool lookup, and search interface |
 | `search` | BM25-based full-text search strategy |
 | `semantic` | Embedding-based semantic search (optional) |
@@ -19,6 +20,26 @@ go get github.com/jonwraymond/tooldiscovery@latest
 ```
 
 ## Quick Start
+
+### Use the Discovery Facade (Recommended)
+
+```go
+import (
+  "context"
+  "github.com/jonwraymond/tooldiscovery/discovery"
+)
+
+disc, _ := discovery.New(discovery.Options{})
+
+// Register tools through the facade
+_ = disc.RegisterTool(tool, backend)
+
+// Search (hybrid-ready)
+results, _ := disc.Search(context.Background(), "create issue", 5)
+for _, r := range results {
+  fmt.Printf("[%s] %s\n", r.ScoreType, r.Summary.ID)
+}
+```
 
 ### Register and Search Tools
 
@@ -68,6 +89,7 @@ idx := index.NewInMemoryIndex(index.WithSearchStrategy(searcher))
 - **Lexical** (default): simple substring matching; best for small registries.
 - **BM25** (`search`): higher quality ranking for larger registries.
 - **Semantic** (`semantic`): intent-based matching when embeddings are available.
+- **Hybrid** (`discovery`): combines BM25 + semantic with weighted scoring.
 
 ### Progressive Documentation
 
@@ -104,4 +126,10 @@ idx := index.NewInMemoryIndex(index.WithSearchStrategy(searcher))
 
 - [design notes](design-notes.md)
 - [user journey](user-journey.md)
+- [schemas and contracts](schemas.md)
+- [architecture](architecture.md)
+- [concurrency](concurrency.md)
+- [error handling](error-handling.md)
+- [performance](performance.md)
+- [migration](migration.md)
 - [ai-tools-stack documentation](https://jonwraymond.github.io/ai-tools-stack/)

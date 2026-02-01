@@ -73,23 +73,22 @@ func (i *InMemoryIndex) Get(_ context.Context, id string) (Document, bool) {
 }
 
 // List returns documents sorted by ID for deterministic ordering.
+// The returned slice is a point-in-time snapshot; concurrent modifications
+// will not affect the returned documents.
 func (i *InMemoryIndex) List(_ context.Context) []Document {
 	i.mu.RLock()
+	defer i.mu.RUnlock()
+
 	ids := make([]string, 0, len(i.docs))
 	for id := range i.docs {
 		ids = append(ids, id)
 	}
-	// Copy docs after collecting IDs to minimize lock duration.
-	i.mu.RUnlock()
-
 	sort.Strings(ids)
 
 	out := make([]Document, 0, len(ids))
-	i.mu.RLock()
 	for _, id := range ids {
 		out = append(out, i.docs[id])
 	}
-	i.mu.RUnlock()
 	return out
 }
 

@@ -1015,3 +1015,173 @@ func TestBM25Searcher_ToolindexIntegration(t *testing.T) {
 		t.Fatalf("close failed: %v", err)
 	}
 }
+
+// ============================================================
+// Tests for Deterministic method
+// ============================================================
+
+func TestBM25Searcher_Deterministic(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+	if !s.Deterministic() {
+		t.Error("BM25Searcher.Deterministic() should return true")
+	}
+}
+
+func TestBM25Searcher_ImplementsDeterministicSearcher(t *testing.T) {
+	// Compile-time interface check
+	var _ index.DeterministicSearcher = (*BM25Searcher)(nil)
+}
+
+// ============================================================
+// Tests for Close edge cases
+// ============================================================
+
+func TestBM25Searcher_Close_Idempotent(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+	docs := makeTestDocs(5)
+
+	// Trigger index creation
+	_, err := s.Search("test", 5, docs)
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	// First close should succeed
+	if err := s.Close(); err != nil {
+		t.Fatalf("First Close failed: %v", err)
+	}
+
+	// Second close should also succeed (no-op)
+	if err := s.Close(); err != nil {
+		t.Fatalf("Second Close should be idempotent: %v", err)
+	}
+}
+
+func TestBM25Searcher_Close_NeverUsed(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+
+	// Close without ever using the searcher
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close on unused searcher failed: %v", err)
+	}
+}
+
+// ============================================================
+// Tests for IndexBuildCount
+// ============================================================
+
+func TestBM25Searcher_IndexBuildCount(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+
+	// Initially zero
+	if count := s.IndexBuildCount(); count != 0 {
+		t.Errorf("expected initial build count 0, got %d", count)
+	}
+
+	docs := makeTestDocs(3)
+
+	// First search triggers build
+	_, err := s.Search("test", 3, docs)
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if count := s.IndexBuildCount(); count != 1 {
+		t.Errorf("expected build count 1 after first search, got %d", count)
+	}
+
+	// Same docs should not trigger rebuild
+	_, err = s.Search("test", 3, docs)
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if count := s.IndexBuildCount(); count != 1 {
+		t.Errorf("expected build count still 1, got %d", count)
+	}
+
+	// Different docs should trigger rebuild
+	newDocs := makeTestDocs(5)
+	_, err = s.Search("test", 5, newDocs)
+	if err != nil {
+		t.Fatalf("Search failed: %v", err)
+	}
+
+	if count := s.IndexBuildCount(); count != 2 {
+		t.Errorf("expected build count 2 after new docs, got %d", count)
+	}
+}
+
+// ============================================================
+// Tests for concurrent rebuild races
+// ============================================================
+
+func TestBM25Searcher_ConcurrentRebuild(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+
+	const goroutines = 10
+	const iterations = 20
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	// Multiple goroutines searching with different docs
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			for j := 0; j < iterations; j++ {
+				// Alternate between two different doc sets
+				var docs []index.SearchDoc
+				if j%2 == 0 {
+					docs = makeTestDocs(3)
+				} else {
+					docs = makeTestDocs(5)
+				}
+				_, _ = s.Search("tool", 10, docs)
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Just verify we didn't crash and the searcher is still usable
+	docs := makeTestDocs(2)
+	results, err := s.Search("tool", 2, docs)
+	if err != nil {
+		t.Fatalf("Search after concurrent access failed: %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
+}
+
+// ============================================================
+// Tests for fingerprint edge cases
+// ============================================================
+
+func TestBM25Searcher_FingerprintSameAfterClose(t *testing.T) {
+	s := NewBM25Searcher(BM25Config{})
+	docs := makeTestDocs(3)
+
+	// Search, close, search again
+	_, err := s.Search("test", 3, docs)
+	if err != nil {
+		t.Fatalf("First search failed: %v", err)
+	}
+
+	initialCount := s.IndexBuildCount()
+
+	if err := s.Close(); err != nil {
+		t.Fatalf("Close failed: %v", err)
+	}
+
+	// After close, same docs should trigger rebuild
+	_, err = s.Search("test", 3, docs)
+	if err != nil {
+		t.Fatalf("Search after close failed: %v", err)
+	}
+
+	if count := s.IndexBuildCount(); count != initialCount+1 {
+		t.Errorf("expected rebuild after close, got count %d (was %d)", count, initialCount)
+	}
+}
