@@ -27,14 +27,13 @@ coverage.out
 coverage.html
 *_cov.out
 *_cov.html
-*.cov
 
 # Build
 dist/
 bin/
-hybrid
 
 .claude/
 
+# Claude context files
 CLAUDE.md
 **/CLAUDE.md
