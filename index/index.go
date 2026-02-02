@@ -268,6 +268,13 @@ func (idx *InMemoryIndex) Refresh() uint64 {
 	return version
 }
 
+// Version returns the current index version.
+func (idx *InMemoryIndex) Version() uint64 {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	return idx.indexVersion
+}
+
 // DefaultBackendSelector implements the default priority: local > provider > mcp.
 // Exported so other modules (for example, toolrun) can match the same policy.
 func DefaultBackendSelector(backends []model.ToolBackend) model.ToolBackend {

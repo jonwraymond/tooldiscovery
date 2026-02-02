@@ -49,6 +49,22 @@ The recommended entry point for most use cases. Combines all packages into a sim
 - `Result` / `Results` - Search results with scores
 - `HybridSearcher` - Composite searcher
 
+### `registry` - MCP Server Helper
+
+High-level helper for building MCP servers. It composes `index` + `search` with
+local execution handlers and MCP backend aggregation.
+
+**Provides:**
+- Local tool registration with handlers
+- MCP backend connections and tool aggregation
+- MCP protocol handlers (`initialize`, `tools/list`, `tools/call`)
+- Transports (`ServeStdio`, `ServeHTTP`, `ServeSSE`)
+
+**Key Types:**
+- `Registry` - Core registry + lifecycle
+- `ToolHandler` - Local execution handler
+- `BackendConfig` - MCP backend connection config
+
 ### `index` - Tool Registry
 
 Core registry for tool storage, lookup, and search orchestration.

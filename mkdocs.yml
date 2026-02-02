@@ -13,6 +13,7 @@ nav:
       - User Journey: user-journey.md
       - Examples: examples.md
   - Reference:
+      - Registry: registry.md
       - Schemas and Contracts: schemas.md
       - Architecture: architecture.md
       - Concurrency: concurrency.md

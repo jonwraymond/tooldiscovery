@@ -12,6 +12,7 @@ documentation for the ApertureStack tool framework.
 | `search` | BM25-based full-text search strategy |
 | `semantic` | Embedding-based semantic search (optional) |
 | `tooldoc` | Progressive documentation with detail levels |
+| `registry` | MCP server helper with local + backend execution |
 
 ## Installation
 
@@ -39,6 +40,29 @@ results, _ := disc.Search(context.Background(), "create issue", 5)
 for _, r := range results {
   fmt.Printf("[%s] %s\n", r.ScoreType, r.Summary.ID)
 }
+```
+
+### Build an MCP Server (registry)
+
+```go
+import (
+  "context"
+  "github.com/jonwraymond/tooldiscovery/registry"
+)
+
+reg := registry.New(registry.Config{
+  ServerInfo: registry.ServerInfo{Name: "my-mcp", Version: "1.0.0"},
+})
+
+_ = reg.RegisterLocalFunc(
+  "echo",
+  "Echo input",
+  map[string]any{"type": "object"},
+  func(ctx context.Context, args map[string]any) (any, error) { return args, nil },
+)
+
+_ = reg.Start(context.Background())
+defer reg.Stop()
 ```
 
 ### Register and Search Tools
@@ -128,6 +152,7 @@ idx := index.NewInMemoryIndex(index.WithSearchStrategy(searcher))
 - [user journey](user-journey.md)
 - [schemas and contracts](schemas.md)
 - [architecture](architecture.md)
+- [registry](registry.md)
 - [concurrency](concurrency.md)
 - [error handling](error-handling.md)
 - [performance](performance.md)

@@ -18,6 +18,7 @@ go get github.com/jonwraymond/tooldiscovery@latest
 | `search` | BM25-based full-text search strategy |
 | `semantic` | Embedding-based semantic search (optional) |
 | `tooldoc` | Progressive documentation with detail levels |
+| `registry` | MCP server helper with local + backend execution |
 
 ## Quick Start (Discovery Facade)
 
@@ -43,6 +44,7 @@ for _, r := range results {
 - **Schemas and contracts**: `docs/schemas.md`
 - **Architecture**: `docs/architecture.md`
 - **Examples**: `docs/examples.md`
+- **Registry**: `docs/registry.md`
 
 ## Examples
 
