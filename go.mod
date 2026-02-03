@@ -4,7 +4,7 @@ go 1.25.6
 
 require (
 	github.com/blevesearch/bleve/v2 v2.5.7
-	github.com/jonwraymond/toolfoundation v0.2.0
+	github.com/jonwraymond/toolfoundation v0.3.0
 	github.com/modelcontextprotocol/go-sdk v1.2.0
 )
 
