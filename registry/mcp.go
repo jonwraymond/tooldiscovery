@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/modelcontextprotocol/go-sdk/mcp"
-
 	"github.com/jonwraymond/toolfoundation/model"
 )
 
@@ -55,7 +53,7 @@ func (r *Registry) HandleRequest(ctx context.Context, req MCPRequest) MCPRespons
 	}
 }
 
-func (r *Registry) handleInitialize(ctx context.Context, id any, params json.RawMessage) MCPResponse {
+func (r *Registry) handleInitialize(_ context.Context, id any, _ json.RawMessage) MCPResponse {
 	result := map[string]any{
 		"protocolVersion": model.MCPVersion,
 		"capabilities": map[string]any{
@@ -74,7 +72,7 @@ func (r *Registry) handleInitialize(ctx context.Context, id any, params json.Raw
 	}
 }
 
-func (r *Registry) handleToolsList(ctx context.Context, id any, params json.RawMessage) MCPResponse {
+func (r *Registry) handleToolsList(ctx context.Context, id any, _ json.RawMessage) MCPResponse {
 	tools, err := r.ListAll(ctx)
 	if err != nil {
 		return MCPResponse{
@@ -89,12 +87,7 @@ func (r *Registry) handleToolsList(ctx context.Context, id any, params json.RawM
 
 	mcpTools := make([]map[string]any, 0, len(tools))
 	for _, tool := range tools {
-		mcpTool := map[string]any{
-			"name":        tool.Name,
-			"description": tool.Description,
-			"inputSchema": tool.InputSchema,
-		}
-		mcpTools = append(mcpTools, mcpTool)
+		mcpTools = append(mcpTools, toMCPTool(tool))
 	}
 
 	result := map[string]any{
@@ -149,7 +142,7 @@ func (r *Registry) handleToolsCall(ctx context.Context, id any, params json.RawM
 	}
 }
 
-func toMCPTool(tool mcp.Tool) map[string]any {
+func toMCPTool(tool model.Tool) map[string]any {
 	return map[string]any{
 		"name":        tool.Name,
 		"description": tool.Description,

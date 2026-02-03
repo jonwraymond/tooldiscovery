@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/jonwraymond/tooldiscovery/search"
 	"github.com/jonwraymond/toolfoundation/model"
-	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func TestNew(t *testing.T) {
@@ -360,7 +361,9 @@ func TestServeHTTP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var mcpResp MCPResponse
 	if err := json.NewDecoder(resp.Body).Decode(&mcpResp); err != nil {
@@ -395,7 +398,9 @@ func TestServeSSE(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	scanner := bufio.NewScanner(resp.Body)
 	var dataLine string
@@ -561,7 +566,9 @@ func TestUnregisterMCP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("server connect failed: %v", err)
 	}
-	defer serverSession.Close()
+	defer func() {
+		_ = serverSession.Close()
+	}()
 
 	reg := New(Config{
 		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
@@ -577,7 +584,9 @@ func TestUnregisterMCP(t *testing.T) {
 	if err := reg.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
-	defer reg.Stop()
+	defer func() {
+		_ = reg.Stop()
+	}()
 
 	// Verify tool exists
 	_, err = reg.GetTool(ctx, "tool1")
@@ -616,7 +625,9 @@ func TestRegisterMCPDuplicate(t *testing.T) {
 	serverTransport, clientTransport := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	serverSession, _ := server.Connect(ctx, serverTransport, nil)
-	defer serverSession.Close()
+	defer func() {
+		_ = serverSession.Close()
+	}()
 
 	reg := New(Config{
 		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
@@ -656,7 +667,9 @@ func TestStartAlreadyStarted(t *testing.T) {
 
 	ctx := context.Background()
 	_ = reg.Start(ctx)
-	defer reg.Stop()
+	defer func() {
+		_ = reg.Stop()
+	}()
 
 	err := reg.Start(ctx)
 	if err != ErrAlreadyStarted {
@@ -696,7 +709,9 @@ func TestServeHTTP_MethodNotAllowed(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GET failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode != http.StatusMethodNotAllowed {
 		t.Errorf("expected 405, got %d", resp.StatusCode)
@@ -716,7 +731,9 @@ func TestServeHTTP_InvalidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("POST failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 
 	var mcpResp MCPResponse
 	_ = json.NewDecoder(resp.Body).Decode(&mcpResp)

@@ -102,6 +102,8 @@ func ServeSSE(r *Registry) http.Handler {
 
 func writeSSEEvent(w http.ResponseWriter, f http.Flusher, event string, data any) {
 	jsonData, _ := json.Marshal(data)
-	fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, jsonData)
+	if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event, jsonData); err != nil {
+		return
+	}
 	f.Flush()
 }
