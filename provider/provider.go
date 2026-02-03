@@ -10,8 +10,8 @@ import (
 
 // Error values for consistent error handling by callers.
 var (
-	ErrNotFound         = errors.New("provider not found")
-	ErrInvalidProvider  = errors.New("invalid provider")
+	ErrNotFound          = errors.New("provider not found")
+	ErrInvalidProvider   = errors.New("invalid provider")
 	ErrInvalidProviderID = errors.New("invalid provider id")
 )
 

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/jonwraymond/tooldiscovery/search"
+	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
