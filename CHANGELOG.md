@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.0.0 (2026-02-03)
+
+
+### Features
+
+* expand discovery facade and docs ([9cf784f](https://github.com/jonwraymond/tooldiscovery/commit/9cf784f9cff784c0c53094017f13eb3ff1190837))
+* **index:** migrate toolindex package ([e27371a](https://github.com/jonwraymond/tooldiscovery/commit/e27371aab76e755093f4587694a20c67c1b09ed6))
+* initial repository structure ([2e010c5](https://github.com/jonwraymond/tooldiscovery/commit/2e010c51fb1773c7913c1dfaf442ea0dacd91668))
+* provider discovery + canonical summaries ([#8](https://github.com/jonwraymond/tooldiscovery/issues/8)) ([73b1d55](https://github.com/jonwraymond/tooldiscovery/commit/73b1d552efe367acb9627cdcfd7cfa2435d24c9a))
+* **registry:** implement MCP backend support ([a540fcb](https://github.com/jonwraymond/tooldiscovery/commit/a540fcb2592df4bb6643a6568911a7645ce05289))
+* **search:** migrate toolsearch package ([34c742a](https://github.com/jonwraymond/tooldiscovery/commit/34c742a1d93b4be74403a67ef6e672db9f3cf257))
+* **semantic:** migrate toolsemantic package ([10961ef](https://github.com/jonwraymond/tooldiscovery/commit/10961efb89e14c57e55518770e4ae28e7ca524c9))
+* **tooldoc:** migrate tooldocs package ([0fa5b33](https://github.com/jonwraymond/tooldiscovery/commit/0fa5b337fa9973e6fcb26d13b3d1b718e1c4f651))
+
+
+### Bug Fixes
+
+* **deps:** use toolfoundation v0.1.0, remove local replace directive ([da18a6d](https://github.com/jonwraymond/tooldiscovery/commit/da18a6d00b96d61c71651234e9c1b9a32069136b))
+
+
+### Documentation
+
+* add mkdocs config ([4d47d65](https://github.com/jonwraymond/tooldiscovery/commit/4d47d650314cae15c2a0ee53795c62b6ef43bcd0))
+* align discovery docs and README ([b7f622c](https://github.com/jonwraymond/tooldiscovery/commit/b7f622ca575e32da885480214b213f02ce9a5362))
+* update version matrix ([#9](https://github.com/jonwraymond/tooldiscovery/issues/9)) ([092792e](https://github.com/jonwraymond/tooldiscovery/commit/092792e833a1fa1a895f6a09a1e1aea8452a0e34))
+
 ## [Unreleased]
 
 ### Added
