@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1](https://github.com/jonwraymond/tooldiscovery/compare/v0.3.0...v0.3.1) (2026-02-03)
+
+
+### Documentation
+
+* update version matrix ([#9](https://github.com/jonwraymond/tooldiscovery/issues/9)) ([092792e](https://github.com/jonwraymond/tooldiscovery/commit/092792e833a1fa1a895f6a09a1e1aea8452a0e34))
+
 ## [Unreleased]
 
 ### Added
