@@ -92,6 +92,18 @@ type ToolDoc struct {
 	// Maximum length: MaxSummaryLen (200 chars).
 	Summary string `json:"summary"`
 
+	// InputModes lists supported input media types, if available.
+	InputModes []string `json:"inputModes,omitempty"`
+
+	// OutputModes lists supported output media types, if available.
+	OutputModes []string `json:"outputModes,omitempty"`
+
+	// SecuritySummary is a short description of required auth schemes.
+	SecuritySummary string `json:"securitySummary,omitempty"`
+
+	// Annotations contains protocol-agnostic annotation hints.
+	Annotations map[string]any `json:"annotations,omitempty"`
+
 	// SchemaInfo contains derived schema information.
 	// Optional; populated at schema/full levels when derivable.
 	SchemaInfo *SchemaInfo `json:"schemaInfo,omitempty"`

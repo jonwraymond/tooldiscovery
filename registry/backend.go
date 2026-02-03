@@ -10,8 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // BackendConfig describes an MCP backend connection.

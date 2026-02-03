@@ -71,6 +71,11 @@ func TestSummaryStruct(t *testing.T) {
 		Name:             "toolname",
 		Namespace:        "ns",
 		ShortDescription: "A short description",
+		Summary:          "A short description",
+		Category:         "utility",
+		InputModes:       []string{"application/json"},
+		OutputModes:      []string{"application/json"},
+		SecuritySummary:  "apiKey",
 		Tags:             []string{"tag1", "tag2"},
 	}
 
@@ -85,6 +90,21 @@ func TestSummaryStruct(t *testing.T) {
 	}
 	if s.ShortDescription != "A short description" {
 		t.Errorf("expected ShortDescription 'A short description', got %q", s.ShortDescription)
+	}
+	if s.Summary != "A short description" {
+		t.Errorf("expected Summary 'A short description', got %q", s.Summary)
+	}
+	if s.Category != "utility" {
+		t.Errorf("expected Category 'utility', got %q", s.Category)
+	}
+	if len(s.InputModes) != 1 || s.InputModes[0] != "application/json" {
+		t.Errorf("expected InputModes [application/json], got %v", s.InputModes)
+	}
+	if len(s.OutputModes) != 1 || s.OutputModes[0] != "application/json" {
+		t.Errorf("expected OutputModes [application/json], got %v", s.OutputModes)
+	}
+	if s.SecuritySummary != "apiKey" {
+		t.Errorf("expected SecuritySummary 'apiKey', got %q", s.SecuritySummary)
 	}
 	if len(s.Tags) != 2 {
 		t.Errorf("expected 2 tags, got %d", len(s.Tags))

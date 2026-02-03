@@ -268,6 +268,17 @@ func (s *InMemoryStore) DescribeTool(id string, level DetailLevel) (ToolDoc, err
 		summary = truncateString(tool.Description, MaxSummaryLen)
 	}
 
+	var inputModes []string
+	var outputModes []string
+	var securitySummary string
+	var annotations map[string]any
+	if tool != nil {
+		inputModes = stringSliceFromAny(tool.Meta["inputModes"])
+		outputModes = stringSliceFromAny(tool.Meta["outputModes"])
+		securitySummary = securitySummaryFromMeta(tool.Meta)
+		annotations = annotationsFromTool(tool.Annotations)
+	}
+
 	// For summary level, we're done
 	if level == DetailSummary {
 		if summary == "" && !hasDoc && tool == nil {
@@ -277,7 +288,13 @@ func (s *InMemoryStore) DescribeTool(id string, level DetailLevel) (ToolDoc, err
 			}
 			return ToolDoc{}, fmt.Errorf("%w: %s", ErrNotFound, id)
 		}
-		return ToolDoc{Summary: summary}, nil
+		return ToolDoc{
+			Summary:         summary,
+			InputModes:      inputModes,
+			OutputModes:     outputModes,
+			SecuritySummary: securitySummary,
+			Annotations:     annotations,
+		}, nil
 	}
 
 	// Build schema info from tool's InputSchema
@@ -288,9 +305,13 @@ func (s *InMemoryStore) DescribeTool(id string, level DetailLevel) (ToolDoc, err
 
 	// Build result based on level
 	result := ToolDoc{
-		Tool:       tool,
-		Summary:    summary,
-		SchemaInfo: schemaInfo,
+		Tool:            tool,
+		Summary:         summary,
+		InputModes:      inputModes,
+		OutputModes:     outputModes,
+		SecuritySummary: securitySummary,
+		Annotations:     annotations,
+		SchemaInfo:      schemaInfo,
 	}
 
 	if level == DetailFull {

@@ -26,15 +26,22 @@ Fields:
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | string | Canonical tool ID (`namespace:name` or `name`) |
+| `id` | string | Canonical tool ID (`namespace:name:version`, `namespace:name`, or `name`) |
 | `name` | string | Tool name |
 | `namespace` | string | Optional namespace |
 | `shortDescription` | string | Truncated to 120 chars |
+| `summary` | string | Short summary (mirrors shortDescription) |
+| `category` | string | Optional category label |
+| `inputModes` | []string | Supported input media types |
+| `outputModes` | []string | Supported output media types |
+| `securitySummary` | string | Short auth scheme summary |
 | `tags` | []string | Normalized tags |
 
 Constraints:
 
 - `shortDescription` is capped by `index.MaxShortDescriptionLen` (120).
+- `summary` mirrors the shortDescription payload for search results.
+- `inputModes`, `outputModes`, and `securitySummary` are derived from tool metadata.
 - `tags` are normalized and deduplicated by the index.
 - `Summary` never includes schemas.
 
@@ -47,7 +54,7 @@ Fields:
 | Field | Type | Notes |
 |-------|------|-------|
 | `ID` | string | Canonical tool ID |
-| `DocText` | string | Lowercased concatenation of name, namespace, description, tags |
+| `DocText` | string | Lowercased concatenation of name, namespace, description, summary, category, modes, tags |
 | `Summary` | Summary | Prebuilt summary returned to callers |
 
 Contracts:
@@ -65,6 +72,10 @@ Fields:
 |-------|------|-------|
 | `tool` | *model.Tool | Present for `schema`/`full` levels |
 | `summary` | string | Capped at 200 chars |
+| `inputModes` | []string | Supported input media types |
+| `outputModes` | []string | Supported output media types |
+| `securitySummary` | string | Short auth scheme summary |
+| `annotations` | map[string]any | Tool annotations for UI hints |
 | `schemaInfo` | *SchemaInfo | Derived from input schema |
 | `notes` | string | Capped at 2000 chars |
 | `examples` | []ToolExample | Optional usage examples |
@@ -128,4 +139,3 @@ For JSON Schema input/output contract details, reference:
 
 - **toolfoundation** schema docs
 - `model.Tool` in **toolfoundation/model**
-

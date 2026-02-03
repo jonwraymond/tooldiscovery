@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Change notification via `OnChange` listener pattern
 - Cursor-based pagination with `SearchPage` and `ListNamespacesPage`
 - Default lexical searcher for basic substring matching
-- Tool ID format: `namespace:name` or just `name`
+- Tool ID format: `namespace:name:version`, `namespace:name`, or just `name`
 
 #### `search` Package
 - `BM25Searcher` using Bleve for full-text search

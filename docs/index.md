@@ -85,7 +85,7 @@ if err != nil {
 // Search for tools
 summaries, err := idx.Search("create issue", 5)
 for _, s := range summaries {
-  fmt.Printf("%s: %s\n", s.ID, s.ShortDescription)
+  fmt.Printf("%s: %s\n", s.ID, s.Summary)
 }
 ```
 

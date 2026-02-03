@@ -37,6 +37,11 @@ type Summary struct {
 	Name             string   `json:"name"`
 	Namespace        string   `json:"namespace,omitempty"`
 	ShortDescription string   `json:"shortDescription,omitempty"`
+	Summary          string   `json:"summary,omitempty"`
+	Category         string   `json:"category,omitempty"`
+	InputModes       []string `json:"inputModes,omitempty"`
+	OutputModes      []string `json:"outputModes,omitempty"`
+	SecuritySummary  string   `json:"securitySummary,omitempty"`
 	Tags             []string `json:"tags,omitempty"`
 }
 
@@ -1011,10 +1016,25 @@ func refreshRecordDerived(record *toolRecord) {
 
 // buildDocText creates the lowercased search text for a tool.
 func buildDocText(tool model.Tool, normalizedTags []string) string {
+	summary := summaryFromMeta(tool.Meta, tool.Description)
+	category := categoryFromMeta(tool.Meta)
+	inputModes := stringSliceFromAny(tool.Meta["inputModes"])
+	outputModes := stringSliceFromAny(tool.Meta["outputModes"])
+	securitySummary := securitySummaryFromMeta(tool.Meta)
+
 	parts := []string{
 		strings.ToLower(tool.Name),
 		strings.ToLower(tool.Namespace),
 		strings.ToLower(tool.Description),
+		strings.ToLower(summary),
+		strings.ToLower(category),
+		strings.ToLower(securitySummary),
+	}
+	if len(inputModes) > 0 {
+		parts = append(parts, strings.ToLower(strings.Join(inputModes, " ")))
+	}
+	if len(outputModes) > 0 {
+		parts = append(parts, strings.ToLower(strings.Join(outputModes, " ")))
 	}
 	parts = append(parts, normalizedTags...) // already normalized/lowercased
 	return strings.Join(parts, " ")
@@ -1022,7 +1042,8 @@ func buildDocText(tool model.Tool, normalizedTags []string) string {
 
 // buildSummary creates a Summary from tool fields and normalized tags.
 func buildSummary(tool model.Tool, normalizedTags []string) Summary {
-	shortDesc := tool.Description
+	summary := summaryFromMeta(tool.Meta, tool.Description)
+	shortDesc := summary
 	if len(shortDesc) > MaxShortDescriptionLen {
 		shortDesc = shortDesc[:MaxShortDescriptionLen]
 	}
@@ -1032,7 +1053,122 @@ func buildSummary(tool model.Tool, normalizedTags []string) Summary {
 		Name:             tool.Name,
 		Namespace:        tool.Namespace,
 		ShortDescription: shortDesc,
+		Summary:          shortDesc,
+		Category:         categoryFromMeta(tool.Meta),
+		InputModes:       stringSliceFromAny(tool.Meta["inputModes"]),
+		OutputModes:      stringSliceFromAny(tool.Meta["outputModes"]),
+		SecuritySummary:  securitySummaryFromMeta(tool.Meta),
 		Tags:             normalizedTags,
+	}
+}
+
+func summaryFromMeta(meta mcp.Meta, fallback string) string {
+	if meta != nil {
+		if summary, ok := meta["summary"].(string); ok && summary != "" {
+			return summary
+		}
+	}
+	return fallback
+}
+
+func categoryFromMeta(meta mcp.Meta) string {
+	if meta == nil {
+		return ""
+	}
+	if category, ok := meta["category"].(string); ok {
+		return category
+	}
+	return ""
+}
+
+func securitySummaryFromMeta(meta mcp.Meta) string {
+	if meta == nil {
+		return ""
+	}
+	schemes := schemeNamesFromRequirements(meta["securityRequirements"])
+	if len(schemes) == 0 {
+		schemes = schemeNamesFromSchemes(meta["securitySchemes"])
+	}
+	if len(schemes) == 0 {
+		return ""
+	}
+	sort.Strings(schemes)
+	return strings.Join(schemes, ",")
+}
+
+func schemeNamesFromRequirements(raw any) []string {
+	switch reqs := raw.(type) {
+	case []map[string][]string:
+		out := make([]string, 0, len(reqs))
+		for _, req := range reqs {
+			for name := range req {
+				out = append(out, name)
+			}
+		}
+		return out
+	case []map[string]any:
+		out := make([]string, 0, len(reqs))
+		for _, req := range reqs {
+			for name := range req {
+				out = append(out, name)
+			}
+		}
+		return out
+	case []any:
+		out := make([]string, 0, len(reqs))
+		for _, item := range reqs {
+			if reqMap, ok := item.(map[string]any); ok {
+				for name := range reqMap {
+					out = append(out, name)
+				}
+			}
+			if reqMap, ok := item.(map[string][]string); ok {
+				for name := range reqMap {
+					out = append(out, name)
+				}
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func schemeNamesFromSchemes(raw any) []string {
+	switch schemes := raw.(type) {
+	case map[string]any:
+		out := make([]string, 0, len(schemes))
+		for name := range schemes {
+			out = append(out, name)
+		}
+		return out
+	case map[string]map[string]any:
+		out := make([]string, 0, len(schemes))
+		for name := range schemes {
+			out = append(out, name)
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
+func stringSliceFromAny(v any) []string {
+	switch t := v.(type) {
+	case []string:
+		out := make([]string, len(t))
+		copy(out, t)
+		return out
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, item := range t {
+			if s, ok := item.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	default:
+		return nil
 	}
 }
 

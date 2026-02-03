@@ -71,7 +71,7 @@ Core registry for tool storage, lookup, and search orchestration.
 
 **Provides:**
 - Tool registration with backends
-- Canonical ID generation (`namespace:name`)
+- Canonical ID generation (`namespace:name:version` when version is set)
 - Pluggable search via `Searcher` interface
 - Change notifications
 - Pagination support
@@ -261,9 +261,9 @@ The `semantic/adapter.go` provides conversion between package types:
 | DocText | Text |
 | Summary.Name | Name |
 | Summary.Namespace | Namespace |
-| Summary.ShortDescription | Description |
+| Summary.Summary (fallback ShortDescription) | Description |
 | Summary.Tags | Tags |
-| (not present) | Category |
+| Summary.Category | Category |
 
 ## Configuration Patterns
 

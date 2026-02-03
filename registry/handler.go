@@ -3,8 +3,9 @@ package registry
 import (
 	"context"
 
-	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	"github.com/jonwraymond/toolfoundation/model"
 )
 
 // ToolHandler executes a local tool with the given arguments.

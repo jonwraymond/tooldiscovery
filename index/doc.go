@@ -53,6 +53,11 @@
 //   - Name: Tool name
 //   - Namespace: Optional namespace for grouping
 //   - ShortDescription: Truncated description (max 120 chars)
+//   - Summary: Short summary (mirrors ShortDescription)
+//   - Category: Optional category label
+//   - InputModes: Supported input media types
+//   - OutputModes: Supported output media types
+//   - SecuritySummary: Short auth summary
 //   - Tags: Associated tags for filtering
 //
 // # Pagination
