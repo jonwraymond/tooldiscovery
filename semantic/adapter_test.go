@@ -167,6 +167,8 @@ func TestSearchDocFromDocument(t *testing.T) {
 					Name:             "create-issue",
 					Namespace:        "github",
 					ShortDescription: "Create a new issue",
+					Summary:          "Create a new issue",
+					Category:         "vcs",
 					Tags:             []string{"github", "issue"},
 				},
 			},
@@ -187,6 +189,7 @@ func TestSearchDocFromDocument(t *testing.T) {
 					ID:               "test",
 					Name:             "test-tool",
 					ShortDescription: "A test tool",
+					Summary:          "A test tool",
 					Tags:             []string{"test"},
 				},
 			},
@@ -206,6 +209,7 @@ func TestSearchDocFromDocument(t *testing.T) {
 					ID:               "test",
 					Name:             "test",
 					ShortDescription: "This is a very long description that exceeds the maximum length allowed for short descriptions which is 120 characters a",
+					Summary:          "This is a very long description that exceeds the maximum length allowed for short descriptions which is 120 characters a",
 					Tags:             nil,
 				},
 			},
@@ -344,7 +348,7 @@ func TestRoundTrip_DocumentToSearchDocAndBack(t *testing.T) {
 	searchDoc := SearchDocFromDocument(original)
 	roundTripped := DocumentFromSearchDoc(searchDoc)
 
-	// Should preserve key fields (Category is lost in round-trip)
+	// Should preserve key fields
 	if roundTripped.ID != original.ID {
 		t.Errorf("ID mismatch: got %s, want %s", roundTripped.ID, original.ID)
 	}
@@ -363,8 +367,7 @@ func TestRoundTrip_DocumentToSearchDocAndBack(t *testing.T) {
 	if roundTripped.Text != original.Text {
 		t.Errorf("Text mismatch: got %s, want %s", roundTripped.Text, original.Text)
 	}
-	// Category is expected to be lost (not stored in SearchDoc)
-	if roundTripped.Category != "" {
-		t.Errorf("Category should be empty after round-trip, got %s", roundTripped.Category)
+	if roundTripped.Category != original.Category {
+		t.Errorf("Category mismatch: got %s, want %s", roundTripped.Category, original.Category)
 	}
 }

@@ -7,9 +7,9 @@ import (
 	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
-)
 
-const mcpProtocolVersion = "2025-03-26"
+	"github.com/jonwraymond/toolfoundation/model"
+)
 
 // MCPRequest represents an incoming MCP JSON-RPC request.
 type MCPRequest struct {
@@ -57,7 +57,7 @@ func (r *Registry) HandleRequest(ctx context.Context, req MCPRequest) MCPRespons
 
 func (r *Registry) handleInitialize(ctx context.Context, id any, params json.RawMessage) MCPResponse {
 	result := map[string]any{
-		"protocolVersion": mcpProtocolVersion,
+		"protocolVersion": model.MCPVersion,
 		"capabilities": map[string]any{
 			"tools": map[string]any{},
 		},

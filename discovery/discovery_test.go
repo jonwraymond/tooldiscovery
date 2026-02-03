@@ -10,6 +10,7 @@ import (
 
 	"github.com/jonwraymond/tooldiscovery/index"
 	"github.com/jonwraymond/tooldiscovery/tooldoc"
+	"github.com/jonwraymond/toolfoundation/adapter"
 	"github.com/jonwraymond/toolfoundation/model"
 )
 
@@ -759,6 +760,41 @@ func TestDiscovery_Search_WithNonInMemoryIndex(t *testing.T) {
 
 	// Should get results from fallback path
 	t.Logf("Got %d results from fallback path", len(results))
+}
+
+func TestDiscovery_ProviderRegistration(t *testing.T) {
+	disc, err := New(Options{})
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	id, err := disc.RegisterProvider("", adapter.CanonicalProvider{
+		Name:        "Test Agent",
+		Description: "Handles tests",
+		Version:     "1.0.0",
+	})
+	if err != nil {
+		t.Fatalf("RegisterProvider error = %v", err)
+	}
+	if id == "" {
+		t.Fatal("expected provider id")
+	}
+
+	got, err := disc.DescribeProvider(id)
+	if err != nil {
+		t.Fatalf("DescribeProvider error = %v", err)
+	}
+	if got.Name != "Test Agent" {
+		t.Errorf("Name = %q, want Test Agent", got.Name)
+	}
+
+	list, err := disc.ListProviders()
+	if err != nil {
+		t.Fatalf("ListProviders error = %v", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("ListProviders length = %d, want 1", len(list))
+	}
 }
 
 func TestDiscovery_RegisterTool_WithDocError(t *testing.T) {

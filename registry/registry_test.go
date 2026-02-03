@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jonwraymond/toolfoundation/model"
 	"github.com/jonwraymond/tooldiscovery/search"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -136,8 +137,8 @@ func TestHandleRequest_Initialize(t *testing.T) {
 		t.Fatalf("expected result to be map, got %T", resp.Result)
 	}
 
-	if resultMap["protocolVersion"] != mcpProtocolVersion {
-		t.Errorf("expected protocolVersion %s, got %v", mcpProtocolVersion, resultMap["protocolVersion"])
+	if resultMap["protocolVersion"] != model.MCPVersion {
+		t.Errorf("expected protocolVersion %s, got %v", model.MCPVersion, resultMap["protocolVersion"])
 	}
 
 	serverInfo := resultMap["serverInfo"].(map[string]any)
@@ -426,5 +427,303 @@ func TestServeSSE(t *testing.T) {
 	tools, ok := resultMap["tools"].([]any)
 	if !ok || len(tools) == 0 {
 		t.Fatal("expected at least one tool")
+	}
+}
+
+func TestWithVersion(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	handler := func(ctx context.Context, args map[string]any) (any, error) {
+		return nil, nil
+	}
+
+	err := reg.RegisterLocalFunc(
+		"versioned",
+		"Versioned tool",
+		map[string]any{"type": "object"},
+		handler,
+		WithVersion("2.0.0"),
+	)
+	if err != nil {
+		t.Fatalf("RegisterLocalFunc failed: %v", err)
+	}
+
+	ctx := context.Background()
+	tool, err := reg.GetTool(ctx, "versioned")
+	if err != nil {
+		t.Fatalf("GetTool failed: %v", err)
+	}
+	if tool.Version != "2.0.0" {
+		t.Errorf("expected version '2.0.0', got %s", tool.Version)
+	}
+}
+
+func TestGetTool(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	handler := func(ctx context.Context, args map[string]any) (any, error) {
+		return nil, nil
+	}
+
+	_ = reg.RegisterLocalFunc("mytool", "My tool", map[string]any{"type": "object"}, handler, WithNamespace("ns"))
+
+	ctx := context.Background()
+	tool, err := reg.GetTool(ctx, "ns:mytool")
+	if err != nil {
+		t.Fatalf("GetTool failed: %v", err)
+	}
+	if tool.Name != "mytool" {
+		t.Errorf("expected name 'mytool', got %s", tool.Name)
+	}
+
+	_, err = reg.GetTool(ctx, "nonexistent")
+	if err == nil {
+		t.Error("expected error for nonexistent tool")
+	}
+}
+
+func TestListNamespaces(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	handler := func(ctx context.Context, args map[string]any) (any, error) {
+		return nil, nil
+	}
+
+	_ = reg.RegisterLocalFunc("tool1", "Tool 1", map[string]any{"type": "object"}, handler, WithNamespace("ns1"))
+	_ = reg.RegisterLocalFunc("tool2", "Tool 2", map[string]any{"type": "object"}, handler, WithNamespace("ns2"))
+
+	ctx := context.Background()
+	namespaces, err := reg.ListNamespaces(ctx)
+	if err != nil {
+		t.Fatalf("ListNamespaces failed: %v", err)
+	}
+	if len(namespaces) < 2 {
+		t.Errorf("expected at least 2 namespaces, got %d", len(namespaces))
+	}
+}
+
+func TestSearchSummaries(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	handler := func(ctx context.Context, args map[string]any) (any, error) {
+		return nil, nil
+	}
+
+	_ = reg.RegisterLocalFunc("searchable", "A searchable tool", map[string]any{"type": "object"}, handler)
+
+	ctx := context.Background()
+	summaries, err := reg.SearchSummaries(ctx, "searchable", 10)
+	if err != nil {
+		t.Fatalf("SearchSummaries failed: %v", err)
+	}
+	if len(summaries) == 0 {
+		t.Error("expected at least one summary")
+	}
+}
+
+func TestRefresh(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	handler := func(ctx context.Context, args map[string]any) (any, error) {
+		return nil, nil
+	}
+
+	_ = reg.RegisterLocalFunc("tool", "Tool", map[string]any{"type": "object"}, handler)
+
+	version := reg.Refresh()
+	if version == 0 {
+		t.Error("expected non-zero version after refresh")
+	}
+}
+
+func TestUnregisterMCP(t *testing.T) {
+	server := mcp.NewServer(&mcp.Implementation{Name: "backend-server"}, nil)
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "tool1",
+		Description: "Tool 1",
+	}, func(ctx context.Context, req *mcp.CallToolRequest, args struct{}) (*mcp.CallToolResult, any, error) {
+		return nil, nil, nil
+	})
+
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	serverSession, err := server.Connect(ctx, serverTransport, nil)
+	if err != nil {
+		t.Fatalf("server connect failed: %v", err)
+	}
+	defer serverSession.Close()
+
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	if err := reg.RegisterMCP(BackendConfig{
+		Name:      "backend1",
+		Transport: clientTransport,
+	}); err != nil {
+		t.Fatalf("RegisterMCP failed: %v", err)
+	}
+
+	if err := reg.Start(ctx); err != nil {
+		t.Fatalf("Start failed: %v", err)
+	}
+	defer reg.Stop()
+
+	// Verify tool exists
+	_, err = reg.GetTool(ctx, "tool1")
+	if err != nil {
+		t.Fatalf("expected tool1 to exist: %v", err)
+	}
+
+	// Unregister
+	if err := reg.UnregisterMCP("backend1"); err != nil {
+		t.Fatalf("UnregisterMCP failed: %v", err)
+	}
+
+	// Verify backend is gone
+	err = reg.UnregisterMCP("backend1")
+	if err == nil {
+		t.Error("expected error when unregistering non-existent backend")
+	}
+}
+
+func TestRegisterMCPEmptyName(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	err := reg.RegisterMCP(BackendConfig{
+		Name: "",
+		URL:  "http://example.com",
+	})
+	if err == nil {
+		t.Error("expected error for empty backend name")
+	}
+}
+
+func TestRegisterMCPDuplicate(t *testing.T) {
+	server := mcp.NewServer(&mcp.Implementation{Name: "backend-server"}, nil)
+	serverTransport, clientTransport := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	serverSession, _ := server.Connect(ctx, serverTransport, nil)
+	defer serverSession.Close()
+
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	_ = reg.RegisterMCP(BackendConfig{
+		Name:      "backend",
+		Transport: clientTransport,
+	})
+
+	_, clientTransport2 := mcp.NewInMemoryTransports()
+	err := reg.RegisterMCP(BackendConfig{
+		Name:      "backend",
+		Transport: clientTransport2,
+	})
+	if err == nil {
+		t.Error("expected error for duplicate backend name")
+	}
+}
+
+func TestHealthCheckNotStarted(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	ctx := context.Background()
+	err := reg.HealthCheck(ctx)
+	if err != ErrNotStarted {
+		t.Errorf("expected ErrNotStarted, got %v", err)
+	}
+}
+
+func TestStartAlreadyStarted(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	ctx := context.Background()
+	_ = reg.Start(ctx)
+	defer reg.Stop()
+
+	err := reg.Start(ctx)
+	if err != ErrAlreadyStarted {
+		t.Errorf("expected ErrAlreadyStarted, got %v", err)
+	}
+}
+
+func TestHandleRequest_MethodNotFound(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	req := MCPRequest{
+		JSONRPC: "2.0",
+		ID:      1,
+		Method:  "unknown/method",
+	}
+
+	resp := reg.HandleRequest(context.Background(), req)
+	if resp.Error == nil {
+		t.Fatal("expected error for unknown method")
+	}
+	if resp.Error.Code != ErrCodeMethodNotFound {
+		t.Errorf("expected ErrCodeMethodNotFound, got %d", resp.Error.Code)
+	}
+}
+
+func TestServeHTTP_MethodNotAllowed(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	srv := httptest.NewServer(ServeHTTP(reg))
+	defer srv.Close()
+
+	resp, err := http.Get(srv.URL)
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusMethodNotAllowed {
+		t.Errorf("expected 405, got %d", resp.StatusCode)
+	}
+}
+
+func TestServeHTTP_InvalidJSON(t *testing.T) {
+	reg := New(Config{
+		ServerInfo: ServerInfo{Name: "test", Version: "1.0.0"},
+	})
+
+	srv := httptest.NewServer(ServeHTTP(reg))
+	defer srv.Close()
+
+	body := bytes.NewBufferString(`{invalid json`)
+	resp, err := http.Post(srv.URL, "application/json", body)
+	if err != nil {
+		t.Fatalf("POST failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var mcpResp MCPResponse
+	_ = json.NewDecoder(resp.Body).Decode(&mcpResp)
+	if mcpResp.Error == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+	if mcpResp.Error.Code != ErrCodeParseError {
+		t.Errorf("expected ErrCodeParseError, got %d", mcpResp.Error.Code)
 	}
 }

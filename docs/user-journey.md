@@ -55,7 +55,7 @@ if err != nil {
 }
 
 for _, s := range summaries {
-  fmt.Printf("Found: %s - %s\n", s.ID, s.ShortDescription)
+  fmt.Printf("Found: %s - %s\n", s.ID, s.Summary)
 }
 ```
 

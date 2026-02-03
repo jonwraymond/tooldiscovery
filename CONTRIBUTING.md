@@ -122,7 +122,7 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/). 
 
 ### index
 
-- Tool IDs must be normalized to `namespace:name` or `name`
+- Tool IDs must be normalized to `namespace:name:version`, `namespace:name`, or `name`
 - Search results must be deterministic for stable pagination
 - OnChange listeners must run outside locks
 

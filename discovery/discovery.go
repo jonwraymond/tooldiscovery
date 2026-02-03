@@ -5,9 +5,11 @@ import (
 	"errors"
 
 	"github.com/jonwraymond/tooldiscovery/index"
+	"github.com/jonwraymond/tooldiscovery/provider"
 	"github.com/jonwraymond/tooldiscovery/search"
 	"github.com/jonwraymond/tooldiscovery/semantic"
 	"github.com/jonwraymond/tooldiscovery/tooldoc"
+	"github.com/jonwraymond/toolfoundation/adapter"
 	"github.com/jonwraymond/toolfoundation/model"
 )
 
@@ -27,6 +29,9 @@ type Options struct {
 
 	// DocStore is the documentation store. If nil, creates a new InMemoryStore.
 	DocStore tooldoc.Store
+
+	// ProviderStore is the provider registry. If nil, creates a new InMemoryStore.
+	ProviderStore provider.Store
 
 	// Embedder enables hybrid search when provided.
 	// If nil, uses BM25-only search.
@@ -53,6 +58,7 @@ type Discovery struct {
 	searcher   index.Searcher
 	compositeS CompositeSearcher // nil if using standard searcher
 	docs       *tooldoc.InMemoryStore
+	providers  provider.Store
 	scoreType  ScoreType
 	searchDocs func() []index.SearchDoc
 }
@@ -116,6 +122,13 @@ func New(opts Options) (*Discovery, error) {
 				return &tool, nil
 			},
 		})
+	}
+
+	// Setup provider store
+	if opts.ProviderStore != nil {
+		d.providers = opts.ProviderStore
+	} else {
+		d.providers = provider.NewInMemoryStore()
 	}
 
 	// Setup search doc accessor
@@ -225,6 +238,30 @@ func (d *Discovery) DescribeTool(id string, level tooldoc.DetailLevel) (tooldoc.
 	return d.docs.DescribeTool(id, level)
 }
 
+// DescribeProvider returns provider metadata by ID.
+func (d *Discovery) DescribeProvider(id string) (adapter.CanonicalProvider, error) {
+	if d.providers == nil {
+		return adapter.CanonicalProvider{}, provider.ErrNotFound
+	}
+	return d.providers.DescribeProvider(id)
+}
+
+// ListProviders returns all registered providers.
+func (d *Discovery) ListProviders() ([]adapter.CanonicalProvider, error) {
+	if d.providers == nil {
+		return nil, provider.ErrNotFound
+	}
+	return d.providers.ListProviders()
+}
+
+// RegisterProvider registers a provider and returns the resolved ID.
+func (d *Discovery) RegisterProvider(id string, p adapter.CanonicalProvider) (string, error) {
+	if d.providers == nil {
+		return "", provider.ErrInvalidProvider
+	}
+	return d.providers.RegisterProvider(id, p)
+}
+
 // ListExamples returns examples for a tool.
 func (d *Discovery) ListExamples(id string, maxExamples int) ([]tooldoc.ToolExample, error) {
 	return d.docs.ListExamples(id, maxExamples)
@@ -252,6 +289,11 @@ func (d *Discovery) Index() index.Index {
 // DocStore returns the underlying documentation store.
 func (d *Discovery) DocStore() *tooldoc.InMemoryStore {
 	return d.docs
+}
+
+// ProviderStore returns the underlying provider store.
+func (d *Discovery) ProviderStore() provider.Store {
+	return d.providers
 }
 
 // getSearchDocs returns the current search documents.

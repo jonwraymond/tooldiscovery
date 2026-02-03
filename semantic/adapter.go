@@ -12,9 +12,9 @@ import (
 //   - ID: Canonical tool ID (preserved)
 //   - Name: From Summary.Name
 //   - Namespace: From Summary.Namespace
-//   - Description: From Summary.ShortDescription
+//   - Description: From Summary.Summary (fallback to ShortDescription)
 //   - Tags: From Summary.Tags (copied)
-//   - Category: Empty (not present in SearchDoc)
+//   - Category: From Summary.Category
 //   - Text: From DocText (pre-normalized search text)
 func DocumentFromSearchDoc(doc index.SearchDoc) Document {
 	var tags []string
@@ -23,13 +23,18 @@ func DocumentFromSearchDoc(doc index.SearchDoc) Document {
 		copy(tags, doc.Summary.Tags)
 	}
 
+	description := doc.Summary.Summary
+	if description == "" {
+		description = doc.Summary.ShortDescription
+	}
+
 	return Document{
 		ID:          doc.ID,
 		Name:        doc.Summary.Name,
 		Namespace:   doc.Summary.Namespace,
-		Description: doc.Summary.ShortDescription,
+		Description: description,
 		Tags:        tags,
-		Category:    "",
+		Category:    doc.Summary.Category,
 		Text:        doc.DocText,
 	}
 }
@@ -58,6 +63,7 @@ func DocumentsFromSearchDocs(docs []index.SearchDoc) []Document {
 //   - Summary.Name: From Name
 //   - Summary.Namespace: From Namespace
 //   - Summary.ShortDescription: From Description (truncated to 120 chars)
+//   - Summary.Summary: Same as ShortDescription
 //   - Summary.Tags: From Tags (copied)
 func SearchDocFromDocument(doc Document) index.SearchDoc {
 	var tags []string
@@ -87,6 +93,8 @@ func SearchDocFromDocument(doc Document) index.SearchDoc {
 			Name:             doc.Name,
 			Namespace:        doc.Namespace,
 			ShortDescription: shortDesc,
+			Summary:          shortDesc,
+			Category:         doc.Category,
 			Tags:             tags,
 		},
 	}

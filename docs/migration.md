@@ -250,7 +250,7 @@ idx := index.NewInMemoryIndex()
 
 ### Tool ID Format
 
-tooldiscovery uses `namespace:name` format for tool IDs:
+tooldiscovery uses `namespace:name:version` format for tool IDs when version is set (otherwise `namespace:name`):
 
 ```go
 // Tool with namespace "git" and name "status"

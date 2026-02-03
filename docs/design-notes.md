@@ -97,7 +97,7 @@ It handles tool registration, search, and progressive documentation.
 
 | Level | Fields |
 |-------|--------|
-| Summary | ID, Name, Namespace, ShortDescription |
+| Summary | ID, Name, Namespace, ShortDescription, Summary, Category, InputModes, OutputModes, SecuritySummary |
 | Schema | Summary + InputSchema, OutputSchema |
 | Full | Schema + Examples, Metadata |
 
